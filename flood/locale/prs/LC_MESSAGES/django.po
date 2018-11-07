@@ -1,0 +1,388 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-10-08 10:49+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: templates/floodInfo.html:65
+msgid "Settlement"
+msgstr ""
+
+#: templates/floodInfo.html:69
+msgid "Language"
+msgstr ""
+
+#: templates/floodInfo.html:73
+msgid "District"
+msgstr ""
+
+#: templates/floodInfo.html:77
+msgid "Province"
+msgstr ""
+
+#: templates/floodInfo.html:81
+msgid "Elevation"
+msgstr ""
+
+#: templates/floodInfo.html:82
+#, python-format
+msgid "%(elevation)s m above sea level"
+msgstr ""
+
+#: templates/floodInfo.html:85
+msgid "Area"
+msgstr ""
+
+#: templates/floodInfo.html:86 templates/quickoverview_flood.html:58
+#: templates/quickoverview_flood.html:62
+msgid "km<sup>2</sup>"
+msgstr ""
+
+#: templates/floodInfo.html:89 templates/quickoverview_flood.html:26
+msgid "Total Population"
+msgstr ""
+
+#: templates/quickoverview_flood.html:10
+msgid "Flood Risk Population"
+msgstr ""
+
+#: templates/quickoverview_flood.html:30
+msgid "Population At Risk"
+msgstr ""
+
+#: templates/quickoverview_flood.html:42
+msgid "Flood Risk Area"
+msgstr ""
+
+#: templates/quickoverview_flood.html:58
+msgid "Total Area"
+msgstr ""
+
+#: templates/quickoverview_flood.html:62
+msgid "Area At Risk"
+msgstr ""
+
+#: templates/quickoverview_flood.html:87
+#: templates/quickoverview_flood.html:218
+#: templates/quickoverview_flood.html:349
+#: templates/quickoverview_flood.html:610
+msgid "River Flood Likelihood"
+msgstr ""
+
+#: templates/quickoverview_flood.html:99
+#: templates/quickoverview_flood.html:622
+msgid ""
+"The prediction based on the combination of Global Flood Awareness Sytem "
+"(GLOFAS) and Global Flood Monitoring Sytem (GFMS). River Flood is updated "
+"every 6 hours and valid for the next 4 days (GFMS) and 20 days (GLOFAS). "
+"GLOFAS supersedes GFMS. Data is only partly calibrated and smaller "
+"mountainous tributaries not included."
+msgstr ""
+
+#: templates/quickoverview_flood.html:104
+#: templates/quickoverview_flood.html:235
+#: templates/quickoverview_flood.html:366
+#: templates/quickoverview_flood.html:497
+#: templates/quickoverview_flood.html:627
+msgid "Likelihood"
+msgstr ""
+
+#: templates/quickoverview_flood.html:105
+#: templates/quickoverview_flood.html:236
+#: templates/quickoverview_flood.html:367
+#: templates/quickoverview_flood.html:498
+#: templates/quickoverview_flood.html:628 views.py:773 views.py:796
+msgid "Flood Risk"
+msgstr ""
+
+#: templates/quickoverview_flood.html:108
+#: templates/quickoverview_flood.html:111
+#: templates/quickoverview_flood.html:239
+#: templates/quickoverview_flood.html:242
+#: templates/quickoverview_flood.html:370
+#: templates/quickoverview_flood.html:373
+#: templates/quickoverview_flood.html:501
+#: templates/quickoverview_flood.html:504
+#: templates/quickoverview_flood.html:631
+#: templates/quickoverview_flood.html:634
+msgid "Level"
+msgstr ""
+
+#: templates/quickoverview_flood.html:109
+#: templates/quickoverview_flood.html:112
+#: templates/quickoverview_flood.html:240
+#: templates/quickoverview_flood.html:243
+#: templates/quickoverview_flood.html:371
+#: templates/quickoverview_flood.html:374
+#: templates/quickoverview_flood.html:502
+#: templates/quickoverview_flood.html:505
+#: templates/quickoverview_flood.html:632
+#: templates/quickoverview_flood.html:635 views.py:765
+msgid "Population"
+msgstr ""
+
+#: templates/quickoverview_flood.html:110
+#: templates/quickoverview_flood.html:113
+#: templates/quickoverview_flood.html:241
+#: templates/quickoverview_flood.html:244
+#: templates/quickoverview_flood.html:372
+#: templates/quickoverview_flood.html:375
+#: templates/quickoverview_flood.html:503
+#: templates/quickoverview_flood.html:506
+#: templates/quickoverview_flood.html:633
+#: templates/quickoverview_flood.html:636
+msgid "Buildings"
+msgstr ""
+
+#: templates/quickoverview_flood.html:118
+#: templates/quickoverview_flood.html:249
+#: templates/quickoverview_flood.html:380
+#: templates/quickoverview_flood.html:511
+#: templates/quickoverview_flood.html:641 views.py:765
+msgid "Extreme"
+msgstr ""
+
+#: templates/quickoverview_flood.html:121
+#: templates/quickoverview_flood.html:139
+#: templates/quickoverview_flood.html:154
+#: templates/quickoverview_flood.html:157
+#: templates/quickoverview_flood.html:175
+#: templates/quickoverview_flood.html:193
+#: templates/quickoverview_flood.html:252
+#: templates/quickoverview_flood.html:270
+#: templates/quickoverview_flood.html:285
+#: templates/quickoverview_flood.html:288
+#: templates/quickoverview_flood.html:306
+#: templates/quickoverview_flood.html:324
+#: templates/quickoverview_flood.html:383
+#: templates/quickoverview_flood.html:401
+#: templates/quickoverview_flood.html:416
+#: templates/quickoverview_flood.html:419
+#: templates/quickoverview_flood.html:437
+#: templates/quickoverview_flood.html:455
+#: templates/quickoverview_flood.html:514
+#: templates/quickoverview_flood.html:532
+#: templates/quickoverview_flood.html:547
+#: templates/quickoverview_flood.html:550
+#: templates/quickoverview_flood.html:568
+#: templates/quickoverview_flood.html:586
+#: templates/quickoverview_flood.html:644
+#: templates/quickoverview_flood.html:662
+#: templates/quickoverview_flood.html:677
+#: templates/quickoverview_flood.html:680
+#: templates/quickoverview_flood.html:698
+#: templates/quickoverview_flood.html:716 views.py:765 views.py:776
+#: views.py:799
+msgid "High"
+msgstr ""
+
+#: templates/quickoverview_flood.html:126
+#: templates/quickoverview_flood.html:144
+#: templates/quickoverview_flood.html:162
+#: templates/quickoverview_flood.html:180
+#: templates/quickoverview_flood.html:198
+#: templates/quickoverview_flood.html:257
+#: templates/quickoverview_flood.html:275
+#: templates/quickoverview_flood.html:293
+#: templates/quickoverview_flood.html:311
+#: templates/quickoverview_flood.html:329
+#: templates/quickoverview_flood.html:388
+#: templates/quickoverview_flood.html:406
+#: templates/quickoverview_flood.html:424
+#: templates/quickoverview_flood.html:442
+#: templates/quickoverview_flood.html:460
+#: templates/quickoverview_flood.html:519
+#: templates/quickoverview_flood.html:537
+#: templates/quickoverview_flood.html:555
+#: templates/quickoverview_flood.html:573
+#: templates/quickoverview_flood.html:591
+#: templates/quickoverview_flood.html:649
+#: templates/quickoverview_flood.html:667
+#: templates/quickoverview_flood.html:685
+#: templates/quickoverview_flood.html:703
+#: templates/quickoverview_flood.html:721
+msgid "Med"
+msgstr ""
+
+#: templates/quickoverview_flood.html:131
+#: templates/quickoverview_flood.html:149
+#: templates/quickoverview_flood.html:167
+#: templates/quickoverview_flood.html:185
+#: templates/quickoverview_flood.html:190
+#: templates/quickoverview_flood.html:203
+#: templates/quickoverview_flood.html:262
+#: templates/quickoverview_flood.html:280
+#: templates/quickoverview_flood.html:298
+#: templates/quickoverview_flood.html:316
+#: templates/quickoverview_flood.html:321
+#: templates/quickoverview_flood.html:334
+#: templates/quickoverview_flood.html:393
+#: templates/quickoverview_flood.html:411
+#: templates/quickoverview_flood.html:429
+#: templates/quickoverview_flood.html:447
+#: templates/quickoverview_flood.html:452
+#: templates/quickoverview_flood.html:465
+#: templates/quickoverview_flood.html:524
+#: templates/quickoverview_flood.html:542
+#: templates/quickoverview_flood.html:560
+#: templates/quickoverview_flood.html:578
+#: templates/quickoverview_flood.html:583
+#: templates/quickoverview_flood.html:596
+#: templates/quickoverview_flood.html:654
+#: templates/quickoverview_flood.html:672
+#: templates/quickoverview_flood.html:690
+#: templates/quickoverview_flood.html:708
+#: templates/quickoverview_flood.html:713
+#: templates/quickoverview_flood.html:726 views.py:765 views.py:774
+#: views.py:797
+msgid "Low"
+msgstr ""
+
+#: templates/quickoverview_flood.html:136
+#: templates/quickoverview_flood.html:267
+#: templates/quickoverview_flood.html:398
+#: templates/quickoverview_flood.html:529
+#: templates/quickoverview_flood.html:659 views.py:765
+msgid "Very High"
+msgstr ""
+
+#: templates/quickoverview_flood.html:172
+#: templates/quickoverview_flood.html:303
+#: templates/quickoverview_flood.html:434
+#: templates/quickoverview_flood.html:565
+#: templates/quickoverview_flood.html:695 views.py:765 views.py:775
+#: views.py:798
+msgid "Moderate"
+msgstr ""
+
+#: templates/quickoverview_flood.html:230
+msgid ""
+"The prediction based solely on Global Flood Awareness Sytem (GLOFAS). River "
+"Flood is updated every 6 hours and valid for the next 20 days. Data is only "
+"partly calibrated and smaller mountainous tributaries not included."
+msgstr ""
+
+#: templates/quickoverview_flood.html:361
+msgid ""
+"The prediction based solely on Global Flood Monitoring Sytem (GFMS). River "
+"Flood is updated every 6 hours and valid for the next 4 days. Data is only "
+"partly calibrated and smaller mountainous tributaries not included."
+msgstr ""
+
+#: templates/quickoverview_flood.html:480
+msgid "Flash Flood Likelihood"
+msgstr ""
+
+#: templates/quickoverview_flood.html:492
+msgid ""
+"Flash Flood Prediction is updated every hour and valid for the next 6 hours"
+msgstr ""
+
+#: views.py:765
+msgid "Very Low"
+msgstr ""
+
+#: views.py:765
+msgid "Population at flood risk"
+msgstr ""
+
+#: views.py:767
+msgid "River Flood"
+msgstr ""
+
+#: views.py:768
+msgid "Flash Flood"
+msgstr ""
+
+#: views.py:770
+msgid "Number of population"
+msgstr ""
+
+#: views.py:770
+msgid "Flood Prediction Exposure"
+msgstr ""
+
+#: views.py:777
+msgid "Flood Risk Population Exposure"
+msgstr ""
+
+#: views.py:777 views.py:793 views.py:801 views.py:817
+msgid "percentage"
+msgstr ""
+
+#: views.py:780 views.py:804
+msgid "Lancover Type"
+msgstr ""
+
+#: views.py:781 views.py:805
+msgid "water body"
+msgstr ""
+
+#: views.py:782 views.py:806
+msgid "barren land"
+msgstr ""
+
+#: views.py:783 views.py:807
+msgid "built up"
+msgstr ""
+
+#: views.py:784 views.py:808
+msgid "fruit trees"
+msgstr ""
+
+#: views.py:785 views.py:809
+msgid "irrigated agricultural"
+msgstr ""
+
+#: views.py:786 views.py:810
+msgid "permanent snow"
+msgstr ""
+
+#: views.py:787 views.py:811
+msgid "rainfeld agricultural"
+msgstr ""
+
+#: views.py:788 views.py:812
+msgid "rangeland"
+msgstr ""
+
+#: views.py:789 views.py:813
+msgid "sandcover"
+msgstr ""
+
+#: views.py:790 views.py:814
+msgid "vineyards"
+msgstr ""
+
+#: views.py:791 views.py:815
+msgid "forest"
+msgstr ""
+
+#: views.py:792 views.py:816
+msgid "sand dunes"
+msgstr ""
+
+#: views.py:793
+msgid "Flood Risk Population Exposure by Landcover type"
+msgstr ""
+
+#: views.py:801
+msgid "Flood Risk Area Exposure"
+msgstr ""
+
+#: views.py:817
+msgid "Flood Risk Area Exposure by Landcover type"
+msgstr ""

@@ -1,0 +1,257 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+from django.db import migrations, models
+import django.contrib.gis.db.models.fields
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('geodb', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='AfgFldzonea100KNciaV2029Cm',
+            fields=[
+                ('ogc_fid', models.IntegerField(serialize=False, primary_key=True)),
+                ('wkb_geometry', django.contrib.gis.db.models.fields.MultiPolygonField(srid=4326, dim=3, null=True, blank=True)),
+                ('id', models.IntegerField(null=True, blank=True)),
+                ('deeperthan', models.CharField(max_length=255, blank=True)),
+                ('province_n', models.CharField(max_length=255, blank=True)),
+                ('district_n', models.CharField(max_length=255, blank=True)),
+                ('basinname', models.CharField(max_length=255, blank=True)),
+                ('near_fid', models.IntegerField(null=True, blank=True)),
+                ('near_dist', models.FloatField(null=True, blank=True)),
+                ('shape_length', models.FloatField(null=True, blank=True)),
+                ('shape_area', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'afg_fldzonea_100k_ncia_v2_029cm',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='AfgFldzonea100KNciaV2121Cm',
+            fields=[
+                ('ogc_fid', models.IntegerField(serialize=False, primary_key=True)),
+                ('wkb_geometry', django.contrib.gis.db.models.fields.MultiPolygonField(srid=4326, dim=3, null=True, blank=True)),
+                ('id', models.IntegerField(null=True, blank=True)),
+                ('deeperthan', models.CharField(max_length=255, blank=True)),
+                ('province_n', models.CharField(max_length=255, blank=True)),
+                ('district_n', models.CharField(max_length=255, blank=True)),
+                ('basinname', models.CharField(max_length=255, blank=True)),
+                ('shape_length', models.FloatField(null=True, blank=True)),
+                ('shape_area', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'afg_fldzonea_100k_ncia_v2_121cm',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='AfgFldzonea100KNciaV2271Cm',
+            fields=[
+                ('ogc_fid', models.IntegerField(serialize=False, primary_key=True)),
+                ('wkb_geometry', django.contrib.gis.db.models.fields.MultiPolygonField(srid=4326, dim=3, null=True, blank=True)),
+                ('id', models.IntegerField(null=True, blank=True)),
+                ('deeperthan', models.CharField(max_length=255, blank=True)),
+                ('province_n', models.CharField(max_length=255, blank=True)),
+                ('district_n', models.CharField(max_length=255, blank=True)),
+                ('basinname', models.CharField(max_length=255, blank=True)),
+                ('shape_length', models.FloatField(null=True, blank=True)),
+                ('shape_area', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'afg_fldzonea_100k_ncia_v2_271cm',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='AfgFldzonea100KNciaV2Risk25Mbuffer',
+            fields=[
+                ('ogc_fid', models.IntegerField(serialize=False, primary_key=True)),
+                ('wkb_geometry', django.contrib.gis.db.models.fields.MultiPolygonField(srid=4326, null=True, blank=True)),
+                ('deeperthan', models.CharField(max_length=255, blank=True)),
+                ('dist_code', models.IntegerField(null=True, blank=True)),
+                ('shape_length', models.FloatField(null=True, blank=True)),
+                ('shape_area', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'afg_fldzonea_100k_ncia_v2_risk_25mbuffer',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='AfgFldzonea100KRiskLandcoverPop',
+            fields=[
+                ('ogc_fid', models.IntegerField(serialize=False, primary_key=True)),
+                ('wkb_geometry', django.contrib.gis.db.models.fields.MultiPolygonField(srid=4326, null=True, blank=True)),
+                ('deeperthan', models.CharField(max_length=255, blank=True)),
+                ('dist_code', models.IntegerField(null=True, blank=True)),
+                ('basin_id', models.FloatField(null=True, blank=True)),
+                ('aggcode_simplified', models.CharField(max_length=255, blank=True)),
+                ('agg_simplified_description', models.CharField(max_length=255, blank=True)),
+                ('area_population', models.FloatField(null=True, blank=True)),
+                ('area_buildings', models.IntegerField(null=True, blank=True)),
+                ('vuid', models.CharField(max_length=255, blank=True)),
+                ('lccs_main_description', models.CharField(max_length=255, blank=True)),
+                ('lccsuslb_simplified', models.CharField(max_length=255, blank=True)),
+                ('vuid_buildings', models.FloatField(null=True, blank=True)),
+                ('vuid_population', models.FloatField(null=True, blank=True)),
+                ('vuid_pop_per_building', models.FloatField(null=True, blank=True)),
+                ('type_settlement', models.CharField(max_length=255, blank=True)),
+                ('prov_code', models.IntegerField(null=True, blank=True)),
+                ('aggcode', models.CharField(max_length=255, blank=True)),
+                ('fldarea_sqm', models.FloatField(null=True, blank=True)),
+                ('fldarea_population', models.FloatField(null=True, blank=True)),
+                ('mitigated_pop', models.FloatField(null=True, blank=True)),
+                ('mitigated_area_sqm', models.FloatField(null=True, blank=True)),
+                ('vuid_area_sqm', models.FloatField(null=True, blank=True)),
+                ('shape_length', models.FloatField(null=True, blank=True)),
+                ('shape_area', models.FloatField(null=True, blank=True)),
+                ('basinmember', models.ForeignKey(related_name='basinmembers', to='geodb.AfgShedaLvl4')),
+            ],
+            options={
+                'db_table': 'afg_fldzonea_100k_risk_landcover_pop',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='AfgFldzonea100KRiskMitigatedAreas',
+            fields=[
+                ('ogc_fid', models.IntegerField(serialize=False, primary_key=True)),
+                ('wkb_geometry', django.contrib.gis.db.models.fields.MultiPolygonField(srid=4326, dim=3, null=True, blank=True)),
+                ('aggcode', models.CharField(max_length=255, blank=True)),
+                ('aggcode_simplified', models.CharField(max_length=255, blank=True)),
+                ('agg_simplified_description', models.CharField(max_length=255, blank=True)),
+                ('vuid', models.CharField(max_length=255, blank=True)),
+                ('vuid_buildings', models.FloatField(null=True, blank=True)),
+                ('vuid_population', models.FloatField(null=True, blank=True)),
+                ('vuid_pop_per_building', models.FloatField(null=True, blank=True)),
+                ('name_en', models.CharField(max_length=255, blank=True)),
+                ('type_settlement', models.CharField(max_length=255, blank=True)),
+                ('dist_code', models.IntegerField(null=True, blank=True)),
+                ('dist_na_en', models.CharField(max_length=255, blank=True)),
+                ('prov_na_en', models.CharField(max_length=255, blank=True)),
+                ('prov_code_1', models.IntegerField(null=True, blank=True)),
+                ('deeperthan', models.CharField(max_length=255, blank=True)),
+                ('mitigated_fld_pop', models.FloatField(null=True, blank=True)),
+                ('mitigated_fld_area_sqm', models.FloatField(null=True, blank=True)),
+                ('mitigated', models.IntegerField(null=True, blank=True)),
+                ('mitigated_zone', models.IntegerField(null=True, blank=True)),
+                ('note', models.CharField(max_length=1023, blank=True)),
+                ('mitigation_type', models.CharField(max_length=255, blank=True)),
+                ('basin_id', models.FloatField(null=True, blank=True)),
+                ('area_buildings', models.IntegerField(null=True, blank=True)),
+                ('lccs_main_description', models.CharField(max_length=1023, blank=True)),
+                ('lccsuslb_simplified', models.CharField(max_length=255, blank=True)),
+                ('shape_length', models.FloatField(null=True, blank=True)),
+                ('shape_area', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'afg_fldzonea_100k_risk_mitigated_areas',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='FlashFloodForecastedHistory',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('vuid', models.CharField(max_length=255, blank=True)),
+                ('basin_id', models.FloatField(null=True, blank=True)),
+                ('datadate', models.DateField(null=True, blank=True)),
+                ('flashflood_forecast_verylow_pop', models.FloatField(null=True, blank=True)),
+                ('flashflood_forecast_low_pop', models.FloatField(null=True, blank=True)),
+                ('flashflood_forecast_med_pop', models.FloatField(null=True, blank=True)),
+                ('flashflood_forecast_high_pop', models.FloatField(null=True, blank=True)),
+                ('flashflood_forecast_veryhigh_pop', models.FloatField(null=True, blank=True)),
+                ('flashflood_forecast_extreme_pop', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'flash_flood_forecasted_history',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='FloodRiskExposure',
+            fields=[
+                ('id', models.IntegerField(serialize=False, primary_key=True)),
+                ('title', models.CharField(max_length=255, blank=True)),
+                ('code', models.CharField(max_length=255, blank=True)),
+            ],
+            options={
+                'db_table': 'FloodRiskExposure',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='Forcastedvalue',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('datadate', models.DateTimeField()),
+                ('forecasttype', models.CharField(max_length=50)),
+                ('riskstate', models.IntegerField()),
+                ('basin', models.ForeignKey(related_name='basins', to='geodb.AfgShedaLvl4')),
+            ],
+            options={
+                'db_table': 'forcastedvalue',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='forecastedLastUpdate',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('datadate', models.DateTimeField()),
+                ('forecasttype', models.CharField(max_length=50)),
+            ],
+            options={
+                'db_table': 'forecastedlastupdate',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='Glofasintegrated',
+            fields=[
+                ('id', models.IntegerField(serialize=False, primary_key=True)),
+                ('basin_id', models.BigIntegerField(null=True, blank=True)),
+                ('datadate', models.DateField(null=True, blank=True)),
+                ('lon', models.FloatField(null=True, blank=True)),
+                ('lat', models.FloatField(null=True, blank=True)),
+                ('rl2', models.FloatField(null=True, blank=True)),
+                ('rl5', models.FloatField(null=True, blank=True)),
+                ('rl20', models.FloatField(null=True, blank=True)),
+                ('rl2_dis_percent', models.IntegerField(null=True, blank=True)),
+                ('rl2_avg_dis_percent', models.IntegerField(null=True, blank=True)),
+                ('rl5_dis_percent', models.IntegerField(null=True, blank=True)),
+                ('rl5_avg_dis_percent', models.IntegerField(null=True, blank=True)),
+                ('rl20_dis_percent', models.IntegerField(null=True, blank=True)),
+                ('rl20_avg_dis_percent', models.IntegerField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'glofasintegrated',
+                'managed': True,
+            },
+        ),
+        migrations.CreateModel(
+            name='RiverFloodForecastedHistory',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('vuid', models.CharField(max_length=255, blank=True)),
+                ('basin_id', models.FloatField(null=True, blank=True)),
+                ('datadate', models.DateField(null=True, blank=True)),
+                ('riverflood_forecast_verylow_pop', models.FloatField(null=True, blank=True)),
+                ('riverflood_forecast_low_pop', models.FloatField(null=True, blank=True)),
+                ('riverflood_forecast_med_pop', models.FloatField(null=True, blank=True)),
+                ('riverflood_forecast_high_pop', models.FloatField(null=True, blank=True)),
+                ('riverflood_forecast_veryhigh_pop', models.FloatField(null=True, blank=True)),
+                ('riverflood_forecast_extreme_pop', models.FloatField(null=True, blank=True)),
+            ],
+            options={
+                'db_table': 'river_flood_forecasted_history',
+                'managed': True,
+            },
+        ),
+    ]
