@@ -79,7 +79,7 @@ from django.template import RequestContext
 import json
 import time, datetime
 import timeago
-from geodb.enumerations import HEALTHFAC_TYPES, LANDCOVER_TYPES, LIKELIHOOD_INDEX, DEPTH_TYPES, DEPTH_TYPES_INVERSE, LANDCOVER_TYPES_INVERSE, LIKELIHOOD_INDEX_INVERSE, LANDCOVER_TYPES_GROUP
+from geodb.enumerations import HEALTHFAC_TYPES, LANDCOVER_TYPES, LIKELIHOOD_INDEX, DEPTH_TYPES, DEPTH_TYPES_INVERSE, LANDCOVER_TYPES_INVERSE, LIKELIHOOD_INDEX_INVERSE, LANDCOVER_TYPES_GROUP, DEPTH_INDEX, DEPTH_TYPES, DEPTH_TYPES_SIMPLE
 
 gchart.ComboChart = ComboChart
 
@@ -264,8 +264,8 @@ def getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[]):
 	targetRisk = targetRiskIncludeWater.exclude(agg_simplified_description='Water body and Marshland')
 	targetBase = AfgLndcrva.objects.all()
 
-	if include_section(['pop_depth','area_depth','building_depth'], includes, excludes):
-		response['baseline'] = getBaseline(request, filterLock, flag, code, includes=['pop_lc','area_lc','building_lc'])
+	if include_section(['baseline','pop_depth','area_depth','building_depth'], includes, excludes):
+		response = getBaseline(request, filterLock, flag, code, includes, excludes, baselineonly=False)
 		cached = flag in ['entireAfg','currentProvince']
 		if cached:
 
@@ -319,114 +319,19 @@ def getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[]):
 	response.path('floodrisk')['area_depth_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['area_total'])*100, 0) for k,v in response['floodrisk']['area_depth'].items()}
 	response.path('floodrisk')['area_depth_percent_total'] = sum(response.path('floodrisk')['area_depth_percent'].values())
 
+	response.path('floodrisk')['building_depth_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['building_total'])*100, 0) for k,v in response['floodrisk']['building_depth'].items()}
+	response.path('floodrisk')['building_depth_percent_total'] = sum(response.path('floodrisk')['building_depth_percent'].values())
+
 	response.path('floodrisk')['pop_lc_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['pop_lc'][k])*100, 0) for k,v in response['floodrisk']['pop_lc'].items()}
 	response.path('floodrisk')['area_lc_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['area_lc'][k])*100, 0) for k,v in response['floodrisk']['area_lc'].items()}
 
 	response.path('floodrisk')['settlement_likelihood_total_percent'] = int(round((div_by_zero_is_zero((response.path('floodrisk')['settlement_likelihood_total'] or 0),(response.path('baseline')['settlement_total'] or 1)))*100,0))
-	response.path('floodrisk')['pop_depth_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['baseline']['pop_total'] or 1)))*100,0)) for k,v in response.path('floodrisk')['pop_depth'].items()}
-	response.path('floodrisk')['pop_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['baseline']['pop_lcgroup'][k] or 1)))*100,0)) for k,v in response.path('floodrisk')['pop_lcgroup'].items()}
-	response.path('floodrisk')['area_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['baseline']['area_lcgroup'][k] or 1)))*100,0)) for k,v in response.path('floodrisk')['area_lcgroup'].items()}
-
-	# # for i in rawBaseline:
-	# # 	response[i]=rawBaseline[i]
-
-	# # for i in rawFloodRisk:
-	# # 	response[i]=rawFloodRisk[i]
-
-	# # response = none_to_zero(response)
-
-	# if response['Population']==0:
-	# 	response['Population'] = 0.000001
-	# if response['Buildings']==0:
-	# 	response['Buildings'] = 0.000001
-	# if response['built_up_pop']==0:
-	# 	response['built_up_pop'] = 0.000001
-	# if response['built_up_area']==0:
-	# 	response['built_up_area'] = 0.000001
-	# if response['cultivated_pop']==0:
-	# 	response['cultivated_pop'] = 0.000001
-	# if response['cultivated_area']==0:
-	# 	response['cultivated_area'] = 0.000001
-	# if response['barren_pop']==0:
-	# 	response['barren_pop'] = 0.000001
-	# if response['barren_area']==0:
-	# 	response['barren_area'] = 0.000001
-
-	# response['settlement_at_floodrisk'] = getSettlementAtFloodRisk(filterLock, flag, code)
-	# response['settlement_at_floodrisk_percent'] = int(round(((response['settlement_at_floodrisk'] or 0)/(response['settlement'] or 1))*100,0))
-
-	# response['total_pop_atrisk_percent'] = int(round(((response['total_risk_population'] or 0)/(response['Population'] or 1))*100,0))
-	# response['total_area_atrisk_percent'] = int(round(((response['total_risk_area'] or 0)/(response['Area'] or 1))*100,0))
-
-	# response['total_pop_high_atrisk_percent'] = int(round(((response['high_risk_population'] or 0)/(response['Population'] or 1))*100,0))
-	# response['total_pop_med_atrisk_percent'] = int(round(((response['med_risk_population'] or 0)/(response['Population'] or 1))*100,0))
-	# response['total_pop_low_atrisk_percent'] = int(round(((response['low_risk_population'] or 0)/(response['Population'] or 1))*100,0))
-
-	# response['built_up_pop_risk_percent'] = int(round(((response['built_up_pop_risk'] or 0)/(response['built_up_pop'] or 1))*100,0))
-	# response['built_up_area_risk_percent'] = int(round(((response['built_up_area_risk'] or 0)/(response['built_up_area'] or 1))*100,0))
-
-	# response['cultivated_pop_risk_percent'] = int(round(((response['cultivated_pop_risk'] or 0)/(response['cultivated_pop'] or 1))*100,0))
-	# response['cultivated_area_risk_percent'] = int(round(((response['cultivated_area_risk'] or 0)/(response['cultivated_area'] or 0))*100,0))
-
-	# response['barren_pop_risk_percent'] = int(round(((response['barren_pop_risk'] or 0)/(response['barren_pop'] or 1))*100,0))
-	# response['barren_area_risk_percent'] = int(round(((response['barren_area_risk'] or 0)/(response['barren_area'] or 1))*100,0))
-
-	# data1 = []
-	# data1.append(['agg_simplified_description','area_population'])
-	# data1.append(['',response['total_risk_population']])
-	# data1.append(['',response['Population']-response['total_risk_population']])
-	# # response['total_pop_atrisk_chart'] = gchart.PieChart(SimpleDataSource(data=data1), html_id="pie_chart1", options={'title':'', 'width': 135,'height': 135, 'pieSliceText': 'number', 'pieSliceTextStyle': 'black','legend': 'none', 'pieHole': 0.75, 'slices':{0:{'color':'red'},1:{'color':'grey'}}, 'pieStartAngle': 270, 'tooltip': { 'trigger': 'none' }, })
-
-	# data2 = []
-	# data2.append(['agg_simplified_description','area_population'])
-	# data2.append(['',response['high_risk_population']])
-	# data2.append(['',response['Population']-response['high_risk_population']])
-	# # response['high_pop_atrisk_chart'] = gchart.PieChart(SimpleDataSource(data=data2), html_id="pie_chart2", options={'title':'', 'width': 135,'height': 135, 'pieSliceText': 'number', 'pieSliceTextStyle': 'black','legend': 'none', 'pieHole': 0.75, 'slices':{0:{'color':'red'},1:{'color':'grey'}}, 'pieStartAngle': 270, 'tooltip': { 'trigger': 'none' }, })
-
-	# data3 = []
-	# data3.append(['agg_simplified_description','area_population'])
-	# data3.append(['',response['med_risk_population']])
-	# data3.append(['',response['Population']-response['med_risk_population']])
-	# # response['med_pop_atrisk_chart'] = gchart.PieChart(SimpleDataSource(data=data3), html_id="pie_chart3", options={'title':'', 'width': 135,'height': 135, 'pieSliceText': 'number', 'pieSliceTextStyle': 'black','legend': 'none', 'pieHole': 0.75, 'slices':{0:{'color':'red'},1:{'color':'grey'}}, 'pieStartAngle': 270, 'tooltip': { 'trigger': 'none' }, })
-
-	# data4 = []
-	# data4.append(['agg_simplified_description','area_population'])
-	# data4.append(['',response['low_risk_population']])
-	# data4.append(['',response['Population']-response['low_risk_population']])
-	# # response['low_pop_atrisk_chart'] = gchart.PieChart(SimpleDataSource(data=data4), html_id="pie_chart4", options={'title':'', 'width': 135,'height': 135, 'pieSliceText': 'number', 'pieSliceTextStyle': 'black','legend': 'none', 'pieHole': 0.75, 'slices':{0:{'color':'red'},1:{'color':'grey'}}, 'pieStartAngle': 270, 'tooltip': { 'trigger': 'none' }, })
-
-	# data = getProvinceSummary(filterLock, flag, code)
-
-	# for i in data:
-	# 	if i['Population']==0:
-	# 		i['Population'] = 0.000001
-	# 	if i['built_up_pop']==0:
-	# 		i['built_up_pop'] = 0.000001
-	# 	if i['built_up_area']==0:
-	# 		i['built_up_area'] = 0.000001
-	# 	if i['cultivated_pop']==0:
-	# 		i['cultivated_pop'] = 0.000001
-	# 	if i['cultivated_area']==0:
-	# 		i['cultivated_area'] = 0.000001
-	# 	if i['barren_pop']==0:
-	# 		i['barren_pop'] = 0.000001
-	# 	if i['barren_area']==0:
-	# 		i['barren_area'] = 0.000001
-
-	# 	i['settlement_at_floodrisk_percent'] = int(round((i['settlements_at_risk'] or 0)/(i['settlements'] or 1)*100,0))
-	# 	i['total_pop_atrisk_percent'] = int(round((i['total_risk_population'] or 0)/(i['Population'] or 1)*100,0))
-	# 	i['total_area_atrisk_percent'] = int(round((i['total_risk_area'] or 0)/(i['Area'] or 1)*100,0))
-	# 	i['built_up_pop_risk_percent'] = int(round((i['built_up_pop_risk'] or 0)/(i['built_up_pop'] or 1)*100,0))
-	# 	i['built_up_area_risk_percent'] = int(round((i['built_up_area_risk'] or 0)/(i['built_up_area'] or 1)*100,0))
-	# 	i['cultivated_pop_risk_percent'] = int(round((i['cultivated_pop_risk'] or 0)/(i['cultivated_pop'] or 1)*100,0))
-	# 	i['cultivated_area_risk_percent'] = int(round((i['cultivated_area_risk'] or 0)/(i['cultivated_area'] or 1)*100,0))
-	# 	i['barren_pop_risk_percent'] = int(round((i['barren_pop_risk'] or 0)/(i['barren_pop'] or 1)*100,0))
-	# 	i['barren_area_risk_percent'] = int(round((i['barren_area_risk'] or 0)/(i['barren_area'] or 1)*100,0))
-
-	# response['lc_child']=data
+	# response.path('floodrisk')['pop_depth_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['floodrisk']['pop_total'] or 1)))*100,0)) for k,v in response.path('floodrisk')['pop_depth'].items()}
+	response.path('floodrisk')['pop_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['floodrisk']['pop_lcgroup'][k] or 1)))*100,0)) for k,v in response.path('floodrisk')['pop_lcgroup'].items()}
+	response.path('floodrisk')['area_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['floodrisk']['area_lcgroup'][k] or 1)))*100,0)) for k,v in response.path('floodrisk')['area_lcgroup'].items()}
 
 	#if include_section('GeoJson', includes, excludes):
-	response['GeoJson'] = json.dumps(getGeoJson(request, flag, code))
+	# response['GeoJson'] = json.dumps(getGeoJson(request, flag, code))
 
 	return response
 
@@ -2817,14 +2722,45 @@ class FloodForecastStatisticResource(ModelResource):
 		response = self.getRisk(request)
 		return self.create_response(request, response)  
 
-def getFloodriskStatistic(request,filterLock, flag, code, yy=None, mm=None, dd=None, rf_type=None, bring=None):
-	response = getFloodRisk(request,filterLock, flag, code)
+# def getFloodriskStatistic(request,filterLock, flag, code, yy=None, mm=None, dd=None, rf_type=None, bring=None):
+# 	response = getFloodRisk(request,filterLock, flag, code)
 
-	return response
+# 	return response
 
-def dashboard_floodrisk(request, filterLock, flag, code, includes=[], excludes=[]):
-	response = dict_ext(getCommonUse(request, flag, code))
-	response['source'] = getFloodRisk(request, filterLock, flag, code)
+def dashboard_floodrisk(request, filterLock, flag, code, includes=['getCommonUse','baseline','pop_lc','area_lc','building_lc','adm_lc','adm_hlt_road','GeoJson'], excludes=[]):
+
+	response = dict_ext()
+
+	if include_section('getCommonUse', includes, excludes):
+		response.update(getCommonUse(request, flag, code))
+
+	response['source'] = getFloodRisk(request, filterLock, flag, code, includes, excludes)
+	response['panels'] = panels = dict_ext()
+	baseline = response['source']['baseline']
+	floodrisk = response['source']['floodrisk']
+
+	for p in ['pop','building','area']:
+		panels.path(p+'_depth')['value'] = [floodrisk[p+'_depth'].get(d) or 0 for d in DEPTH_INDEX.values()]
+		panels.path(p+'_depth')['total_atrisk'] = total_atrisk = sum(panels.path(p+'_depth')['value'])
+		panels.path(p+'_depth')['total'] = total = baseline[p+'_total']
+		panels.path(p+'_depth')['value'].append(total-total_atrisk) # value not at risk
+		panels.path(p+'_depth')['title'] = [DEPTH_TYPES_SIMPLE[d] or 0 for d in DEPTH_INDEX.values()] + ['Not at risk']
+		panels.path(p+'_depth')['percent'] = [floodrisk[p+'_depth_percent'].get(d) or 0 for d in DEPTH_INDEX.values()]
+		panels.path(p+'_depth')['percent'].append(100-sum(panels.path(p+'_depth')['percent'])) # percent not at risk
+
+	if include_section('adm_lc', includes, excludes):
+		response['adm_lc'] = baseline['adm_lc']
+		panels['adm_lcgroup_pop_area'] = {
+			# 'title':_('Overview of Population and Area'),
+			'parentdata':[response['parent_label'],baseline['building_total'],baseline['settlement_total'],baseline['pop_lcgroup']['built_up'],baseline['area_lcgroup']['built_up'],baseline['pop_lcgroup']['cultivated'],baseline['area_lcgroup']['cultivated'],baseline['pop_lcgroup']['barren'],baseline['area_lcgroup']['barren'],baseline['pop_total'],baseline['area_total'],],
+			'child':[{
+				'value':[v['na_en'],v['total_buildings'],v['settlements'],v['built_up_pop'],v['built_up_area'],v['cultivated_pop'],v['cultivated_area'],v['barren_land_pop'],v['barren_land_area'],v['Population'],v['Area'],],
+				'code':v['code'],
+			} for v in baseline['adm_lc']],
+		}
+
+	if include_section('GeoJson', includes, excludes):
+		response['GeoJson'] = geojsonadd(response)
 
 	return response
 
@@ -3173,5 +3109,73 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 				response_tree.path('floodforecast')[key] = val
 
 		response = response_tree
+
+	return response
+
+def geojsonadd(response):
+
+	floodrisk = response['source']['floodrisk']
+	baseline = response['source']['baseline']
+	boundary = response['source']['baseline']['GeoJson']
+
+	for feature in boundary['features']:
+
+	    # Checking if it's in a district
+	    if response['areatype'] == 'nation':
+	    	response['set_jenk_divider'] = 1
+	        feature['properties']['na_en']=response['parent_label']
+	        feature['properties']['total_risk_population']=floodrisk['pop_likelihood_total']
+	        feature['properties']['total_risk_buildings']=floodrisk['building_likelihood_total']
+	        feature['properties']['settlements_at_risk']=floodrisk['settlement_likelihood_total']
+	        feature['properties']['total_risk_area']=floodrisk['area_likelihood_total']
+
+	        feature['properties']['low_risk_population']=floodrisk['pop_depth']['low']
+	        feature['properties']['med_risk_population']=floodrisk['pop_depth']['med']
+	        feature['properties']['high_risk_population']=floodrisk['pop_depth']['high']
+
+	        feature['properties']['low_risk_area']=floodrisk['area_depth']['low']
+	        feature['properties']['med_risk_area']=floodrisk['area_depth']['med']
+	        feature['properties']['high_risk_area']=floodrisk['area_depth']['high']
+
+	    else:
+	    	response['set_jenk_divider'] = 7
+	        for data in baseline.get('adm_lc',{}):
+	            if (feature['properties']['code']==data['code']):
+	            	feature['properties']['na_en']="data['na_en']"
+	                feature['properties']['total_risk_population']=data['total_risk_population']
+	                feature['properties']['total_risk_buildings']=data['total_risk_buildings']
+	                feature['properties']['settlements_at_risk']=data['settlements_at_risk']
+	                feature['properties']['total_risk_area']=data['total_risk_area']
+
+	                feature['properties']['low_risk_population']=data['low_risk_population']
+	                feature['properties']['med_risk_population']=data['med_risk_population']
+	                feature['properties']['high_risk_population']=data['high_risk_population']
+
+	                feature['properties']['low_risk_area']=data['low_risk_area']
+	                feature['properties']['med_risk_area']=data['med_risk_area']
+	                feature['properties']['high_risk_area']=data['high_risk_area']
+
+	return boundary
+
+def getFloodriskStatistic(request,filterLock, flag, code, yy=None, mm=None, dd=None, rf_type=None, bring=None):
+
+	response_dashboard = dashboard_floodrisk(request, filterLock, flag, code)
+	response = dict_ext()
+	response['source'] = response_dashboard['source']
+
+	PANEL_TITLES = {'pop_depth':'Population Graph','area_depth':'Area Graph','building_depth':'Building Graph','adm_lcgroup_pop_area':'Overview of Population and Area'}
+	chart_order = ['pop_depth','building_depth','area_depth']
+	response.path('panels_list')['charts'] = []
+	for k in chart_order:
+		p = {}
+		p['child'] = [{'value':response_dashboard['panels'][k]['value'][i], 'percent':response_dashboard['panels'][k]['percent'][i], 'title':t} for i,t in enumerate(response_dashboard['panels'][k]['title'])]
+		p['title'] = PANEL_TITLES.get(k)
+		p['total'] = response_dashboard['panels'][k]['total']
+		p['total_atrisk'] = response_dashboard['panels'][k]['total_atrisk']
+		response['panels_list']['charts'].append(p)
+	response.path('panels_list')['tables'] = [{
+		'title':PANEL_TITLES.get(k),
+		'child':[response_dashboard['panels'][k]['parentdata']]+[j['value'] for j in response_dashboard['panels'][k]['child']]
+	} for k in ['adm_lcgroup_pop_area']]
 
 	return response
