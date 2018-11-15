@@ -79,7 +79,7 @@ from django.template import RequestContext
 import json
 import time, datetime
 import timeago
-from geodb.enumerations import HEALTHFAC_TYPES, LANDCOVER_TYPES, LIKELIHOOD_INDEX, DEPTH_TYPES, DEPTH_TYPES_INVERSE, LANDCOVER_TYPES_INVERSE, LIKELIHOOD_INDEX_INVERSE, LANDCOVER_TYPES_GROUP, DEPTH_INDEX, DEPTH_TYPES, DEPTH_TYPES_SIMPLE
+from geodb.enumerations import HEALTHFAC_TYPES, LANDCOVER_TYPES, LIKELIHOOD_INDEX, LIKELIHOOD_TYPES, DEPTH_TYPES, DEPTH_TYPES_INVERSE, LANDCOVER_TYPES_INVERSE, LIKELIHOOD_INDEX_INVERSE, LANDCOVER_TYPES_GROUP, DEPTH_INDEX, DEPTH_TYPES, DEPTH_TYPES_SIMPLE
 
 gchart.ComboChart = ComboChart
 
@@ -115,40 +115,35 @@ def getQuickOverview(request, filterLock, flag, code, includes=[], excludes=[]):
 
 # from geodb.geo_calc
 
-def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], rf_types=['gfms']):
+def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], rf_types=None, date=''):
 	response = dict_ext()
 
-	includeDetailState = 'date' not in request.GET
-	curdate = datetime.datetime.utcnow() if includeDetailState else datetime.datetime.strptime(request.GET['date'], '%Y-%m-%d')
-
-	YEAR, MONTH, DAY = curdate.strftime("%Y"), curdate.strftime("%m"), curdate.strftime("%d")
-	reverse_date = curdate - datetime.timedelta(days=1)
+	try:
+		YEAR, MONTH, DAY = date.split('-')
+	except Exception as e:
+		YEAR, MONTH, DAY = datetime.datetime.utcnow().strftime("%Y %m %d").split()
+		
+	reverse_date = datetime.datetime(year=int(YEAR), month=int(MONTH), day=int(DAY)) - datetime.timedelta(days=1)
 
 	targetRiskIncludeWater = AfgFldzonea100KRiskLandcoverPop.objects.all()
 	targetRisk = targetRiskIncludeWater.exclude(agg_simplified_description='Water body and Marshland')
 
 	spt_filter = request.GET.get('filter') or 'NULL'
 
-	response['rf_types'] = rf_types
+	response['rf_types'] = rf_types = rf_types or ['gfms','glofas','gfms_glofas',]
 	for rf_type in rf_types:
 		if include_section('riverflood', includes, excludes):
 			response.path('bysource')[rf_type] = getFloodForecastBySource(rf_type, targetRisk, spt_filter, flag, code, YEAR, MONTH, DAY, formatted=True)
-		if include_section('detail', includes, excludes) or includeDetailState:
+		if include_section('detail', includes, excludes):
 			if rf_type == 'gfms':
 				response.path('child_bysource')[rf_type] = getProvinceSummary(filterLock, flag, code)
 			if rf_type == 'glofas':
-				response.path('child_bysource')[rf_type] = getProvinceSummary_glofas(filterLock, flag, code, reverse_date.strftime("%Y"), reverse_date.strftime("%m"), reverse_date.strftime("%d"), False, formatted=True)
+				response.path('child_bysource')[rf_type] = getProvinceSummary_glofas(filterLock, flag, code, reverse_date.strftime("%Y"), reverse_date.strftime("%m"), reverse_date.strftime("%d"), False, formatted=False)
 			if rf_type == 'gfms_glofas':
-				response.path('child_bysource')[rf_type] = getProvinceSummary_glofas(filterLock, flag, code, YEAR, MONTH, int(DAY), True, formatted=True)
+				response.path('child_bysource')[rf_type] = getProvinceSummary_glofas(filterLock, flag, code, YEAR, MONTH, int(DAY), True, formatted=False)
 
 	if include_section('GeoJson', includes, excludes):
-		response['GeoJson'] = json.dumps(getGeoJson(request, flag, code))
-
-	# if rf_type == 'GFMS only':
-	# 	bring = filterLock    
-	# temp_result = getFloodForecastBySource(rf_type, targetRisk, bring, flag, code, YEAR, MONTH, DAY, multi_dict_response=True)
-
-	# response = dict_ext(merge_dict(response, temp_result))
+		response['GeoJson'] = getGeoJson(request, flag, code)
 
 	if include_section('flashflood', includes, excludes):
 
@@ -164,7 +159,7 @@ def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], 
 		response['area_flashflood_likelihood_total'] = sum(response.path('floodforecast','area_flashflood_likelihood').values())
 
 		sliced = {c['basinmember__basins__riskstate']:c['houseatrisk'] for c in counts}
-		response['building_flashflood_likelihood'] = {k:sliced.get(v) or 0 for k,v in LIKELIHOOD_INDEX.items()}
+		response['building_flashflood_likelihood'] = {v:sliced.get(v) or 0 for k,v in LIKELIHOOD_INDEX.items()}
 		response['building_flashflood_likelihood_total'] = sum(response.path('floodforecast','building_flashflood_likelihood').values())
 
 		r = response
@@ -2712,7 +2707,8 @@ class FloodForecastStatisticResource(ModelResource):
 		d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
 		yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
 
-		response = getFloodForecast(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), rf_types=[boundaryFilter.get('rf_type')])
+		response = getFloodforecastStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=[boundaryFilter.get('date')])
+		# response = getFloodForecast(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), rf_types=[boundaryFilter.get('rf_type')])
 		# response = getFloodriskStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), yy, mm, dd, boundaryFilter.get('rf_type'), bring)
 
 		return response
@@ -2726,6 +2722,44 @@ class FloodForecastStatisticResource(ModelResource):
 # 	response = getFloodRisk(request,filterLock, flag, code)
 
 # 	return response
+
+class FloodStatisticResource(ModelResource):
+
+	class Meta:
+		# authorization = DjangoAuthorization()
+		resource_name = 'statistic_flood'
+		allowed_methods = ['post']
+		detail_allowed_methods = ['post']
+		cache = SimpleCache()
+		object_class=None
+		# always_return_data = True
+ 
+	def getRisk(self, request):
+
+		p = urlparse(request.META.get('HTTP_REFERER')).path.split('/')
+		mapCode = p[3] if 'v2' in p else p[2]
+		map_obj = _resolve_map(request, mapCode, 'base.view_resourcebase', _PERMISSION_MSG_VIEW)
+
+		queryset = matrix(user=request.user,resourceid=map_obj,action='Interactive Calculation')
+		queryset.save()
+
+		boundaryFilter = json.loads(request.body)
+
+		wkts = ['ST_GeomFromText(\'%s\',4326)'%(i) for i in boundaryFilter['spatialfilter']]
+		bring = wkts[-1] if len(wkts) else None
+		filterLock = 'ST_Union(ARRAY[%s])'%(','.join(wkts))
+
+		d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
+		yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
+
+		response = getFloodStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=[boundaryFilter.get('date')])
+
+		return response
+
+	def post_list(self, request, **kwargs):
+		self.method_check(request, allowed=['post'])
+		response = self.getRisk(request)
+		return self.create_response(request, response)  
 
 def dashboard_floodrisk(request, filterLock, flag, code, includes=['getCommonUse','baseline','pop_lc','area_lc','building_lc','adm_lc','adm_hlt_road','GeoJson'], excludes=[]):
 
@@ -2744,29 +2778,145 @@ def dashboard_floodrisk(request, filterLock, flag, code, includes=['getCommonUse
 		panels.path(p+'_depth')['total_atrisk'] = total_atrisk = sum(panels.path(p+'_depth')['value'])
 		panels.path(p+'_depth')['total'] = total = baseline[p+'_total']
 		panels.path(p+'_depth')['value'].append(total-total_atrisk) # value not at risk
-		panels.path(p+'_depth')['title'] = [DEPTH_TYPES_SIMPLE[d] or 0 for d in DEPTH_INDEX.values()] + ['Not at risk']
+		panels.path(p+'_depth')['title'] = [DEPTH_TYPES_SIMPLE[d] for d in DEPTH_INDEX.values()] + ['Not at risk']
 		panels.path(p+'_depth')['percent'] = [floodrisk[p+'_depth_percent'].get(d) or 0 for d in DEPTH_INDEX.values()]
 		panels.path(p+'_depth')['percent'].append(100-sum(panels.path(p+'_depth')['percent'])) # percent not at risk
+		panels.path(p+'_depth')['child'] = [[DEPTH_TYPES_SIMPLE[d], floodrisk[p+'_depth'].get(d)] for d in DEPTH_INDEX.values()]
+		panels.path(p+'_depth')['child'].append(['Not at risk',total-total_atrisk]) # percent not at risk
 
 	if include_section('adm_lc', includes, excludes):
 		response['adm_lc'] = baseline['adm_lc']
 		panels['adm_lcgroup_pop_area'] = {
 			# 'title':_('Overview of Population and Area'),
-			'parentdata':[response['parent_label'],baseline['building_total'],baseline['settlement_total'],baseline['pop_lcgroup']['built_up'],baseline['area_lcgroup']['built_up'],baseline['pop_lcgroup']['cultivated'],baseline['area_lcgroup']['cultivated'],baseline['pop_lcgroup']['barren'],baseline['area_lcgroup']['barren'],baseline['pop_total'],baseline['area_total'],],
+			'parentdata':[
+				response['parent_label'],
+				baseline['building_total'],
+				baseline['settlement_total'],
+				baseline['pop_lcgroup']['built_up'],
+				baseline['area_lcgroup']['built_up'],
+				baseline['pop_lcgroup']['cultivated'],
+				baseline['area_lcgroup']['cultivated'],
+				baseline['pop_lcgroup']['barren'],
+				baseline['area_lcgroup']['barren'],
+				baseline['pop_total'],
+				baseline['area_total'],
+			],
 			'child':[{
-				'value':[v['na_en'],v['total_buildings'],v['settlements'],v['built_up_pop'],v['built_up_area'],v['cultivated_pop'],v['cultivated_area'],v['barren_land_pop'],v['barren_land_area'],v['Population'],v['Area'],],
+				'value':[
+					v['na_en'],
+					v['total_buildings'],
+					v['settlements'],
+					v['built_up_pop'],
+					v['built_up_area'],
+					v['cultivated_pop'],
+					v['cultivated_area'],
+					v['barren_land_pop'],
+					v['barren_land_area'],
+					v['Population'],
+					v['Area'],
+				],
 				'code':v['code'],
 			} for v in baseline['adm_lc']],
 		}
 
 	if include_section('GeoJson', includes, excludes):
-		response['GeoJson'] = geojsonadd(response)
+		response['GeoJson'] = geojsonadd_floodrisk(response)
 
 	return response
 
-def dashboard_floodforecast(request, filterLock, flag, code, includes=[], excludes=[]):
-	response = dict_ext(getCommonUse(request, flag, code))
-	response['source'] = getFloodForecast(request, filterLock, flag, code)
+def dashboard_floodforecast(request, filterLock, flag, code, includes=[], excludes=[], date='', rf_types=None):
+
+	date = date or request.GET.get('date')
+	response = dict_ext(getFloodForecast(request, filterLock, flag, code, rf_types=rf_types, date=date))
+	panels = response.path('panels')
+
+	if include_section('getCommonUse', includes, excludes):
+		response.update(getCommonUse(request, flag, code))
+
+	# baseline = response['source']['baseline']
+	# floodforecast = response['source']['floodforecast']
+
+	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED = LIKELIHOOD_INDEX.values()[::-1]
+	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED.remove('verylow')
+	
+	panels['flashflood_likelihood_table'] = {
+		'title': _('Flash Flood Likelihood'),
+		'child': [{
+			'title': LIKELIHOOD_TYPES[v],
+			'pop': response['pop_flashflood_likelihood'][v],
+			'building': response['building_flashflood_likelihood'][v],
+			'depth_child': [{
+				'title': DEPTH_TYPES_SIMPLE[d],
+				'pop': response['pop_flashflood_likelihood_depth'][v][d],
+				'building': response['building_flashflood_likelihood_depth'][v][d],
+			} for d in DEPTH_INDEX.values()[::-1]],
+		} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
+	}
+
+	panels['flashflood_likelihood_chart'] = {
+		'title': _('Flash Flood Likelihood'),
+		'child': [{
+			'title': LIKELIHOOD_TYPES[v],
+			'pop': response['pop_flashflood_likelihood'][v],
+			'depth_child': [{
+				'title': DEPTH_TYPES_SIMPLE[d],
+				'pop': response['pop_flashflood_likelihood_depth'][v][d],
+			} for d in DEPTH_INDEX.values()],
+		} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
+	}
+
+	for k,j in response['bysource'].items():
+
+		panels.path('riverflood',k)['key'] = k
+		panels.path('riverflood',k)['title'] = k
+
+		panels.path('riverflood',k)['riverflood_likelihood_table'] = {
+			'title': _('River Flood Likelihood'),
+			'child': [{
+				'title': LIKELIHOOD_TYPES[v],
+				'pop': j['pop_riverflood_likelihood_subtotal'][v],
+				'building': j['building_riverflood_likelihood_subtotal'][v],
+				'depth_child': [{
+					'title': DEPTH_TYPES_SIMPLE[d],
+					'pop': j['pop_riverflood_likelihood_depth'][v][d],
+					'building': j['building_riverflood_likelihood_depth'][v][d],
+				} for d in DEPTH_INDEX.values()[::-1]],
+			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
+		}
+
+		panels.path('riverflood',k)['riverflood_likelihood_chart'] = {
+			'title': _('Flash Flood Likelihood'),
+			'child': [{
+				'title': LIKELIHOOD_TYPES[v],
+				'pop': j['pop_riverflood_likelihood_subtotal'][v],
+				'depth_child': [{
+					'title': DEPTH_TYPES_SIMPLE[d],
+					'pop': j['pop_riverflood_likelihood_depth'][v][d],
+				} for d in DEPTH_INDEX.values()],
+			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
+		}
+
+		panels.path('riverflood',k)['flood_likelihood_overview_table'] = {
+			'title': _('Flood Likelihood Overview'),
+			'child': [{
+				'code': v['code'],
+				'value': [
+					v['na_en'],
+					v['flashflood_forecast_extreme_pop'],
+					v['flashflood_forecast_veryhigh_pop'],
+					v['flashflood_forecast_high_pop'],
+					v['flashflood_forecast_med_pop'],
+					v['flashflood_forecast_low_pop'],
+					v['riverflood_forecast_extreme_pop'],
+					v['riverflood_forecast_veryhigh_pop'],
+					v['riverflood_forecast_high_pop'],
+					v['riverflood_forecast_med_pop'],
+					v['riverflood_forecast_low_pop'],
+			]} for v in response['child_bysource'][k]]
+		}
+
+	if include_section('GeoJson', includes, excludes):
+		response['GeoJson'] = geojsonadd_floodforecast(response)
 
 	return response
 
@@ -3093,7 +3243,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 		MAINDATA_TYPES = {'pop':'pop','area':'area','buildings':'building'}
 
 		# make base dict with default value zero
-		response.update({m+'_flashflood_likelihood_depth':{l:{d:0 for d in DEPTH_TYPES} for l in LIKELIHOOD_INDEX_INVERSE} for m in MAINDATA_TYPES.values()})
+		response_tree.update({m+'_riverflood_likelihood_depth':{l:{d:0 for d in DEPTH_TYPES} for l in LIKELIHOOD_INDEX_INVERSE} for m in MAINDATA_TYPES.values()})
 
 		for key, val in response.items():
 			keys = list_ext(key.split('_'))
@@ -3112,7 +3262,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 
 	return response
 
-def geojsonadd(response):
+def geojsonadd_floodrisk(response):
 
 	floodrisk = response['source']['floodrisk']
 	baseline = response['source']['baseline']
@@ -3120,44 +3270,98 @@ def geojsonadd(response):
 
 	for feature in boundary['features']:
 
-	    # Checking if it's in a district
-	    if response['areatype'] == 'nation':
-	    	response['set_jenk_divider'] = 1
-	        feature['properties']['na_en']=response['parent_label']
-	        feature['properties']['total_risk_population']=floodrisk['pop_likelihood_total']
-	        feature['properties']['total_risk_buildings']=floodrisk['building_likelihood_total']
-	        feature['properties']['settlements_at_risk']=floodrisk['settlement_likelihood_total']
-	        feature['properties']['total_risk_area']=floodrisk['area_likelihood_total']
+		# Checking if it's in a district
+		if response['areatype'] == 'nation':
+			response['set_jenk_divider'] = 1
+			feature['properties']['na_en']=response['parent_label']
+			feature['properties']['total_risk_population']=floodrisk['pop_likelihood_total']
+			feature['properties']['total_risk_buildings']=floodrisk['building_likelihood_total']
+			feature['properties']['settlements_at_risk']=floodrisk['settlement_likelihood_total']
+			feature['properties']['total_risk_area']=floodrisk['area_likelihood_total']
 
-	        feature['properties']['low_risk_population']=floodrisk['pop_depth']['low']
-	        feature['properties']['med_risk_population']=floodrisk['pop_depth']['med']
-	        feature['properties']['high_risk_population']=floodrisk['pop_depth']['high']
+			feature['properties']['low_risk_population']=floodrisk['pop_depth']['low']
+			feature['properties']['med_risk_population']=floodrisk['pop_depth']['med']
+			feature['properties']['high_risk_population']=floodrisk['pop_depth']['high']
 
-	        feature['properties']['low_risk_area']=floodrisk['area_depth']['low']
-	        feature['properties']['med_risk_area']=floodrisk['area_depth']['med']
-	        feature['properties']['high_risk_area']=floodrisk['area_depth']['high']
+			feature['properties']['low_risk_area']=floodrisk['area_depth']['low']
+			feature['properties']['med_risk_area']=floodrisk['area_depth']['med']
+			feature['properties']['high_risk_area']=floodrisk['area_depth']['high']
 
-	    else:
-	    	response['set_jenk_divider'] = 7
-	        for data in baseline.get('adm_lc',{}):
-	            if (feature['properties']['code']==data['code']):
-	            	feature['properties']['na_en']="data['na_en']"
-	                feature['properties']['total_risk_population']=data['total_risk_population']
-	                feature['properties']['total_risk_buildings']=data['total_risk_buildings']
-	                feature['properties']['settlements_at_risk']=data['settlements_at_risk']
-	                feature['properties']['total_risk_area']=data['total_risk_area']
+		else:
+			response['set_jenk_divider'] = 7
+			for data in baseline.get('adm_lc',{}):
+				if (feature['properties']['code']==data['code']):
+					feature['properties']['na_en']="data['na_en']"
+					feature['properties']['total_risk_population']=data['total_risk_population']
+					feature['properties']['total_risk_buildings']=data['total_risk_buildings']
+					feature['properties']['settlements_at_risk']=data['settlements_at_risk']
+					feature['properties']['total_risk_area']=data['total_risk_area']
 
-	                feature['properties']['low_risk_population']=data['low_risk_population']
-	                feature['properties']['med_risk_population']=data['med_risk_population']
-	                feature['properties']['high_risk_population']=data['high_risk_population']
+					feature['properties']['low_risk_population']=data['low_risk_population']
+					feature['properties']['med_risk_population']=data['med_risk_population']
+					feature['properties']['high_risk_population']=data['high_risk_population']
 
-	                feature['properties']['low_risk_area']=data['low_risk_area']
-	                feature['properties']['med_risk_area']=data['med_risk_area']
-	                feature['properties']['high_risk_area']=data['high_risk_area']
+					feature['properties']['low_risk_area']=data['low_risk_area']
+					feature['properties']['med_risk_area']=data['med_risk_area']
+					feature['properties']['high_risk_area']=data['high_risk_area']
 
 	return boundary
 
-def getFloodriskStatistic(request,filterLock, flag, code, yy=None, mm=None, dd=None, rf_type=None, bring=None):
+def geojsonadd_floodforecast(response):
+
+	boundary = response['GeoJson']
+	response['child_bysource_dict'] = {k:{data['code']:data for data in v} for k,v in response.get('child_bysource',{}).items()}
+
+	LIKELIHOOD_INDEX_EXC_VERYLOW = LIKELIHOOD_INDEX.values()[::-1]
+	LIKELIHOOD_INDEX_EXC_VERYLOW.remove('verylow')
+
+	for k,v in enumerate(boundary['features']):
+		boundary['features'][k]['properties'] = properties = dict_ext(boundary['features'][k]['properties'])
+		if response['areatype'] == 'nation':
+			response['set_jenk_divider'] = 1
+			properties['na_en'] = response['parent_label']
+			properties['flashflood_forecast_pop'] = {k:response['pop_flashflood_likelihood'][k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+			properties['value'] = 0
+			for k,v in response['bysource'].items():
+				properties.path('bysource',k)['riverflood_forecast_pop'] = {i:j for i,j in v['pop_riverflood_likelihood_subtotal'].items() if i is not 'verylow'}
+   		
+		else:
+			response['set_jenk_divider'] = 7
+			for k,v in response.get('child_bysource_dict',{}).items():
+				if (properties['code'] in v):
+					data = v[properties['code']]
+					properties.path('bysource',k)['riverflood_forecast_pop'] = {k:data['riverflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+					if k == 'gfms':
+						properties['na_en'] = data['na_en']
+						properties['value'] = 0
+						properties['flashflood_forecast_pop'] = {k:data['flashflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+
+				# for data in v:
+				# 	if (properties['code'] == data['code']):
+				# 		properties.path('bysource',k)['riverflood_forecast_pop'] = {k:data['riverflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+				# 		if k == 'gfms':
+				# 			properties['na_en'] = data['na_en']
+				# 			properties['value'] = 0
+				# 			properties['flashflood_forecast_pop'] = {k:data['flashflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+
+			# for data in response.get('child_bysource',{}).get('gfms',[]):
+			# 	if (feature['properties']['code']==data['code']):
+			# 		feature['properties']['na_en']=data['na_en']
+			# 		feature['properties']['value']=0
+			# 		feature.path('properties')['flashflood_forecast_pop'] = {k:data['flashflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+			# 		feature.path('properties','bysource','gfms')['riverflood_forecast_pop'] = {k:data['riverflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+
+			# for data in response.get('child_bysource',{}).get('glofas',[]):
+			# 	if (feature['properties']['code']==data['code']):
+			# 		feature.path('properties','bysource','glofas')['riverflood_forecast_pop'] = {k:data['riverflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+
+			# for data in response.get('child_bysource',{}).get('gfms_glofas',[]):
+			# 	if (feature['properties']['code']==data['code']):
+			# 		feature.path('properties','bysource','gfms_glofas')['riverflood_forecast_pop'] = {k:data['riverflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+
+	return boundary
+
+def getFloodriskStatistic(request,filterLock, flag, code):
 
 	response_dashboard = dashboard_floodrisk(request, filterLock, flag, code)
 	response = dict_ext()
@@ -3177,5 +3381,19 @@ def getFloodriskStatistic(request,filterLock, flag, code, yy=None, mm=None, dd=N
 		'title':PANEL_TITLES.get(k),
 		'child':[response_dashboard['panels'][k]['parentdata']]+[j['value'] for j in response_dashboard['panels'][k]['child']]
 	} for k in ['adm_lcgroup_pop_area']]
+
+	return response
+
+def getFloodforecastStatistic(request,filterLock, flag, code, date=None, rf_types=None, bring=None):
+
+	response = {'panels':dashboard_floodforecast(request, filterLock, flag, code, date=date, rf_types=rf_types)['panels']}
+	return response
+
+def getFloodStatistic(request,filterLock, flag, code, date=None, rf_types=None):
+
+	response = {
+		'floodrisk': getFloodriskStatistic(request,filterLock, flag, code),
+		'floodforecast': getFloodforecastStatistic(request,filterLock, flag, code, date=date, rf_types=rf_types),
+	}
 
 	return response
