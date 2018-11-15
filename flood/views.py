@@ -3271,7 +3271,7 @@ def geojsonadd_floodrisk(response):
 	for feature in boundary['features']:
 
 		# Checking if it's in a district
-		if response['areatype'] == 'nation':
+		if response['areatype'] == 'district':
 			response['set_jenk_divider'] = 1
 			feature['properties']['na_en']=response['parent_label']
 			feature['properties']['total_risk_population']=floodrisk['pop_likelihood_total']
@@ -3291,7 +3291,7 @@ def geojsonadd_floodrisk(response):
 			response['set_jenk_divider'] = 7
 			for data in baseline.get('adm_lc',{}):
 				if (feature['properties']['code']==data['code']):
-					feature['properties']['na_en']="data['na_en']"
+					feature['properties']['na_en']=data['na_en']
 					feature['properties']['total_risk_population']=data['total_risk_population']
 					feature['properties']['total_risk_buildings']=data['total_risk_buildings']
 					feature['properties']['settlements_at_risk']=data['settlements_at_risk']
@@ -3317,7 +3317,7 @@ def geojsonadd_floodforecast(response):
 
 	for k,v in enumerate(boundary['features']):
 		boundary['features'][k]['properties'] = properties = dict_ext(boundary['features'][k]['properties'])
-		if response['areatype'] == 'nation':
+		if response['areatype'] == 'district':
 			response['set_jenk_divider'] = 1
 			properties['na_en'] = response['parent_label']
 			properties['flashflood_forecast_pop'] = {k:response['pop_flashflood_likelihood'][k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
