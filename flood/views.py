@@ -2652,8 +2652,8 @@ class FloodRiskStatisticResource(ModelResource):
 		bring = wkts[-1] if len(wkts) else None
 		filterLock = 'ST_Union(ARRAY['+', '.join(wkts)+'])'
 
-		d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
-		yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
+		# d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
+		# yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
 
 		# yy = mm = dd = None
 
@@ -2664,7 +2664,7 @@ class FloodRiskStatisticResource(ModelResource):
 		# 	if (datetime.datetime.today() - dateSent).days != 0:
 		# 		yy, mm, dd = tempDate[0:3]
 
-		response = getFloodriskStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), yy, mm, dd, boundaryFilter.get('rf_type'), bring)
+		response = getFloodriskStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'))
 
 		return response
 
@@ -2704,8 +2704,8 @@ class FloodForecastStatisticResource(ModelResource):
 		bring = wkts[-1] if len(wkts) else None
 		filterLock = 'ST_Union(ARRAY['+', '.join(wkts)+'])'
 
-		d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
-		yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
+		# d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
+		# yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
 
 		response = getFloodforecastStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=[boundaryFilter.get('date')])
 		# response = getFloodForecast(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), rf_types=[boundaryFilter.get('rf_type')])
@@ -2749,10 +2749,10 @@ class FloodStatisticResource(ModelResource):
 		bring = wkts[-1] if len(wkts) else None
 		filterLock = 'ST_Union(ARRAY[%s])'%(','.join(wkts))
 
-		d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
-		yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
+		# d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
+		# yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
 
-		response = getFloodStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=[boundaryFilter.get('date')])
+		response = getFloodStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=boundaryFilter.get('date'), rf_types=[boundaryFilter.get('rf_types')])
 
 		return response
 
@@ -3289,7 +3289,7 @@ def geojsonadd_floodrisk(response):
 
 		else:
 			response['set_jenk_divider'] = 7
-			for data in baseline.get('adm_lc',{}):
+			for data in baseline.get('adm_lc',[]):
 				if (feature['properties']['code']==data['code']):
 					feature['properties']['na_en']=data['na_en']
 					feature['properties']['total_risk_population']=data['total_risk_population']
@@ -3323,18 +3323,20 @@ def geojsonadd_floodforecast(response):
 			properties['flashflood_forecast_pop'] = {k:response['pop_flashflood_likelihood'][k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
 			properties['value'] = 0
 			for k,v in response['bysource'].items():
-				properties.path('bysource',k)['riverflood_forecast_pop'] = {i:j for i,j in v['pop_riverflood_likelihood_subtotal'].items() if i is not 'verylow'}
-   		
+				k2 = '' if k == 'gfms' else k+'_'
+				properties.update({'%sriverflood_forecast_%s_pop'%(k2,i):j for i,j in v['pop_riverflood_likelihood_subtotal'].items() if i is not 'verylow'})
+
 		else:
 			response['set_jenk_divider'] = 7
 			for k,v in response.get('child_bysource_dict',{}).items():
 				if (properties['code'] in v):
 					data = v[properties['code']]
-					properties.path('bysource',k)['riverflood_forecast_pop'] = {k:data['riverflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+					k2 = '' if k == 'gfms' else k+'_'
+					properties.update({'%sriverflood_forecast_%s_pop'%(k2,i):data['riverflood_forecast_%s_pop'%(i)] for i in LIKELIHOOD_INDEX_EXC_VERYLOW})
 					if k == 'gfms':
 						properties['na_en'] = data['na_en']
 						properties['value'] = 0
-						properties['flashflood_forecast_pop'] = {k:data['flashflood_forecast_%s_pop'%(k)] for k in LIKELIHOOD_INDEX_EXC_VERYLOW}
+						properties.update({'flashflood_forecast_%s_pop'%(i):data['flashflood_forecast_%s_pop'%(i)] for i in LIKELIHOOD_INDEX_EXC_VERYLOW})
 
 				# for data in v:
 				# 	if (properties['code'] == data['code']):
@@ -3384,12 +3386,12 @@ def getFloodriskStatistic(request,filterLock, flag, code):
 
 	return response
 
-def getFloodforecastStatistic(request,filterLock, flag, code, date=None, rf_types=None, bring=None):
+def getFloodforecastStatistic(request,filterLock, flag, code, date=None, rf_types=[], bring=None):
 
 	response = {'panels':dashboard_floodforecast(request, filterLock, flag, code, date=date, rf_types=rf_types)['panels']}
 	return response
 
-def getFloodStatistic(request,filterLock, flag, code, date=None, rf_types=None):
+def getFloodStatistic(request,filterLock, flag, code, date=None, rf_types=[]):
 
 	response = {
 		'floodrisk': getFloodriskStatistic(request,filterLock, flag, code),

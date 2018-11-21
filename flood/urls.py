@@ -15,8 +15,6 @@ urlpatterns_getoverviewmaps = patterns(
     url(r'^getGlofasPointsJSON$', 'getGlofasPointsJSON', name='getGlofasPointsJSON'),    
 )
 urlpatterns = [
-    # api
     url(r'', include(api.urls)),
-
     url(r'^getOverviewMaps/', include(urlpatterns_getoverviewmaps)),
 ]
