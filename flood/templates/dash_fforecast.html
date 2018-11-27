@@ -1,1 +1,459 @@
 {% extends "dashboard_base.html" %}
+{% load i18n %}
+{% load base_tags %}
+{% load app_filters %}
+
+{% block dashboard_breadcrumb %} 
+    <a href="{% url "dashboard_detail" %}?page=floodforecast" class="breadcrumb">{% trans "Flood Forecast" %}</a>
+    {% include "links_title.html" %}
+{% endblock dashboard_breadcrumb %}
+
+{% block dashboard_content %}
+    <div class="row">
+        {% include "qlink_list.html" %}
+    </div>
+
+    <div class="row">
+        <div class="col s12">
+            <div class="card">
+                <div class="card-content">
+                    <span class="card-title">
+                        {% trans "Map" %}
+                    </span>
+                    <div class="row">
+                        <div class="col s12 l3 xl2">
+                            <div id="layercontrol">
+                                <div class="input-field">
+                                    <select id="fforecastOpt">
+                                        <option value="fforecast_checkbox_flash_pop">Population in Flash Flood</option>
+                                        <option value="fforecast_checkbox_flash_build" hidden>Buildings in Flash Flood</option>
+                                        <option value="fforecast_checkbox_river_gg_pop">Population River Flood (GLOFAS + GFMS)</option>
+                                        <option value="fforecast_checkbox_river_gg_build" hidden>Buildings River Flood (GLOFAS + GFMS)</option>
+                                        <option value="fforecast_checkbox_river_gl_pop">Population River Flood (GLOFAS)</option>
+                                        <option value="fforecast_checkbox_river_gl_build" hidden>Buildings River Flood (GLOFAS)</option>
+                                        <option value="fforecast_checkbox_river_gf_pop">Population River Flood (GFMS)</option>
+                                        <option value="fforecast_checkbox_river_gf_build" hidden>Buildings River Flood (GFMS)</option>
+                                    </select>
+                                    <label for="fforecastOpt">Choose Layer :</label>
+                                </div>
+
+                                <div class="input-field">
+                                    <span>WMS Layer</span>
+                                    <div class="switch right">
+                                        <label>
+                                            <input type="checkbox" data-type=wms data-layer=fforecast checked>
+                                            <span class="lever"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <label for="lvl">Choose Level :</label><br>
+                                <div id="lvl" class="lvl_choice">
+                                    <div class="row fforecast_checkbox_flash_pop fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_low_pop">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_med_pop">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_high_pop">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_veryhigh_pop"> 
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_extreme_pop">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style='display:none;' class="row fforecast_checkbox_flash_build fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_low_buildings">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name=" class="filled-in"fforecast_checkbox" value="flashflood_forecast_med_buildings">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_high_buildings">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_veryhigh_buildings"> 
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="flashflood_forecast_extreme_buildings">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div style='display:none;' class="row fforecast_checkbox_river_gg_pop fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_low_pop">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_med_pop">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_high_pop">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_veryhigh_pop">
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_extreme_pop">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style='display:none;' class="row fforecast_checkbox_river_gg_build fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_low_buildings">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_med_buildings">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_high_buildings">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_veryhigh_buildings">
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" name="fforecast_checkbox" value="gfms_glofas_riverflood_forecast_extreme_buildings">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div style='display:none;' class="row fforecast_checkbox_river_gl_pop fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_low_pop">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_med_pop">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_high_pop">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_veryhigh_pop">
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_extreme_pop">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style='display:none;' class="row fforecast_checkbox_river_gl_build fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_low_buildings">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_med_buildings">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_high_buildings">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_veryhigh_buildings">
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="glofas_riverflood_forecast_extreme_buildings">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div style='display:none;' class="row fforecast_checkbox_river_gf_pop fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_low_pop">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_med_pop">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_high_pop">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_veryhigh_pop">
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_extreme_pop">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style='display:none;' class="row fforecast_checkbox_river_gf_build fforecast_opt">
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_low_buildings">
+                                                <span>Low</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_med_buildings">
+                                                <span>Moderate</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_high_buildings">
+                                                <span>High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_veryhigh_buildings">
+                                                <span>Very High</span>
+                                            </label>
+                                        </div>
+                                        <div class="col s12">
+                                            <label>
+                                                <input type="checkbox" class="filled-in" name="fforecast_checkbox" value="riverflood_forecast_extreme_buildings">
+                                                <span>Extreme</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label for="slideRange">Range :</label>
+                                <div id="slideRange">
+                                    <div id="keypress"></div>
+                                    <br>
+                                    <div class="row">
+                                        <div class="input-field col s12 l6">
+                                            <input type="text" id="input-with-keypress-0" class="">
+                                        </div>
+                                        <div class="input-field col s12 l6">
+                                            <input type="text" id="input-with-keypress-1" class="">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label for="themes">Pick a theme :</label>
+                                <div id="themes">
+                                    <button class="theme active" data-btn="YlOrRd"></button>
+                                    <button class="theme" data-btn="PuRd"></button>
+                                    <button class="theme" data-btn="GnBu"></button>
+                                    <button class="theme" data-btn="Blues"></button>
+                                    <button class="theme" data-btn="BuGn"></button>
+                                    <button class="theme" data-btn="BuPu"></button>
+                                    <button class="theme" data-btn="Greens"></button>
+                                    <button class="theme" data-btn="Greys"></button>
+                                    <button class="theme" data-btn="Oranges"></button>
+                                    <button class="theme" data-btn="OrRd"></button>
+                                    <button class="theme" data-btn="PuBu"></button>
+                                    <button class="theme" data-btn="PuBuGn"></button>
+                                    <button class="theme" data-btn="Purples"></button>
+                                    <button class="theme" data-btn="RdPu"></button>
+                                    <button class="theme" data-btn="Reds"></button>
+                                    <button class="theme" data-btn="YlGn"></button>
+                                    <button class="theme" data-btn="YlGnBu"></button>
+                                    <button class="theme" data-btn="YlOrBr"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col s12 l9 xl6">
+                            <div id="leaflet_fforecast_map" class="map-size"></div>
+                        </div>
+                        <div class="col s12 l12 xl4">
+                            <div id="mapInfo"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12 m6 xl4">
+            <div class="card card-graph">
+                <div class="card-header red darken-3 white-text z-depth-2">
+                    <span class="card-title">{% trans "Flood Risk Population" %}</span>
+                    <i class="icon-people_affected_population left"></i>
+                    <span class="card-title right">{% readable panels.pop_depth.total_atrisk %}</span>
+                </div>
+                <div class="card-image">
+                    <div id="chart_pie_frisk_pop" class="ch-size"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12 m6 xl4">
+            <div class="card card-graph">
+                <div class="card-header red darken-3 white-text z-depth-2">
+                    <span class="card-title">{% trans "Flood Risk Building" %}</span>
+                    <i class="icon-infrastructure_building left"></i>
+                    <span class="card-title right">{% readable panels.building_depth.total_atrisk %}</span>
+                </div>
+                <div class="card-image">
+                    <div id="chart_pie_frisk_build" class="ch-size"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12 m6 offset-m3 xl4">
+            <div class="card card-graph">
+                <div class="card-header red darken-3 white-text z-depth-2">
+                    <span class="card-title">{% trans "Flood Risk Area" %}</span>
+                    <i class="fa fa-tree left"></i>
+                    <span class="card-title right">{% readable panels.area_depth.total_atrisk %}</span>
+                </div>
+                <div class="card-image">
+                    <div id="chart_pie_frisk_area" class="ch-size"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col s12">
+            <div class="card">
+                <div class="card-content">
+                    <span class="card-title">
+                        {% trans "Population Living in Flood Risk Areas" %}
+                    </span>
+                    <p>{% trans "Population, buildings and area within 100-year inundation flood zone (source: NATO Flood Map). Flood risk category is estimated based upon potential flood depth: Low flood risk relates to inundation more than 29cm, moderate to 1.21m and high flood risk more than 2.7m. The 100-year inundation interval, implies that every year there is a 1% chance of such a flood event occurring. Most flood events will be in 5,10, 20-year inundation interval." %}</p>
+                    <div class="table-responsive-scroll">
+                        <table class="striped highlight online">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2">{% trans "Region" %}</th>
+                                    <th rowspan="2" class="hum">{% trans "Building" %}</th>
+                                    <th rowspan="2" class="hum">{% trans "Settlement" %}</th>
+                                    <th colspan="2">{% trans "Built-Up" %}</th>
+                                    <th colspan="2">{% trans "Cultivated" %}</th>
+                                    <th colspan="2">{% trans "Barren/Rangeland" %}</th>
+                                    <th colspan="2">{% trans "Total" %}</th>
+                                </tr>
+                                <tr>
+                                    <th class="hum">{% trans "Pop" %}</th>
+                                    <th class="hum">{% trans "Area" %} ({% blocktrans %}km<sup>2</sup>{% endblocktrans %})</th>
+                                    <!-- <th class="hum">Building</th> -->
+                                    <th class="hum">{% trans "Pop" %}</th>
+                                    <th class="hum">{% trans "Area" %} ({% blocktrans %}km<sup>2</sup>{% endblocktrans %})</th>
+                                    <!-- <th class="hum">Building</th> -->
+                                    <th class="hum">{% trans "Pop" %}</th>
+                                    <th class="hum">{% trans "Area" %} ({% blocktrans %}km<sup>2</sup>{% endblocktrans %})</th>
+                                    <!-- <th class="hum">Building</th> -->
+                                    <th class="hum">{% trans "Pop" %}</th>
+                                    <th class="hum">{% trans "Area" %} ({% blocktrans %}km<sup>2</sup>{% endblocktrans %})</th>
+                                    <!-- <th class="hum">Building</th> -->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for parent in panels.adm_lcgroup_pop_area.parentdata %}
+                                    <td class="boldRow">{{parent}}</td>
+                                {% endfor %}
+                                {% for child in panels.adm_lcgroup_pop_area.child %}
+                                    <tr class="selectable" onclick="window.document.location='?page=floodrisk&code={{child.code}}';">
+                                        {% for item in child.value %}
+                                            <td>{{item}}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_script %}
+    <script>
+        var centroid = boundary['centroid'];
+        var chosen_label = '{{parent_label}}';
+    </script>
+{% endblock %}
