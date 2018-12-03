@@ -3268,7 +3268,7 @@ def geojsonadd_floodrisk(response):
 	baseline = response['source']['baseline']
 	boundary = response['source']['baseline']['GeoJson']
 
-	for feature in boundary['features']:
+	for feature in boundary.get('features',[]):
 
 		# Checking if it's in a district
 		if response['areatype'] == 'district':
@@ -3315,7 +3315,7 @@ def geojsonadd_floodforecast(response):
 	LIKELIHOOD_INDEX_EXC_VERYLOW = LIKELIHOOD_INDEX.values()[::-1]
 	LIKELIHOOD_INDEX_EXC_VERYLOW.remove('verylow')
 
-	for k,v in enumerate(boundary['features']):
+	for k,v in enumerate(boundary.get('features',[])):
 		boundary['features'][k]['properties'] = properties = dict_ext(boundary['features'][k]['properties'])
 		if response['areatype'] == 'district':
 			response['set_jenk_divider'] = 1
