@@ -4,7 +4,7 @@ import geodb.geoapi
 from django.db.models import Count, Sum
 from django.db import connection, connections
 from geodb.enumerations import LIKELIHOOD_INDEX_INVERSE, DEPTH_TYPES
-from geonode.utils import query_to_dicts, merge_dict, dict_ext, list_ext, RawSQL_nogroupby
+from geonode.utils import query_to_dicts, merge_dict, dict_ext, list_ext, RawSQL_nogroupby, linenum
 from geodb.geo_calc import getRiskNumber
 # from flood.views import getFloodForecastRisk
 
@@ -315,7 +315,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 		coalesce(round(sum(verylow_med_buildings)),0) as riverflood_forecast_verylow_risk_med_buildings, \
 		coalesce(round(sum(verylow_low_buildings)),0) as riverflood_forecast_verylow_risk_low_buildings \
 		from get_merge_glofas_gfms(date('%s-%s-%s'),'%s',%s,'%s')" %(YEAR,MONTH,DAY,flag,code,filterLock)
-		print sql
+		print linenum(), sql
 		row = query_to_dicts(cursor, sql)
 		for item in row:
 			# response = item
