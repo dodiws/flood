@@ -79,7 +79,21 @@ from django.template import RequestContext
 import json
 import time, datetime
 import timeago
-from geodb.enumerations import HEALTHFAC_TYPES, LANDCOVER_TYPES, LIKELIHOOD_INDEX, LIKELIHOOD_TYPES, DEPTH_TYPES, DEPTH_TYPES_INVERSE, LANDCOVER_TYPES_INVERSE, LIKELIHOOD_INDEX_INVERSE, LANDCOVER_TYPES_GROUP, DEPTH_INDEX, DEPTH_TYPES, DEPTH_TYPES_SIMPLE
+from geodb.enumerations import (
+	DEPTH_INDEX, 
+	DEPTH_TYPES_INVERSE, 
+	DEPTH_TYPES_SIMPLE, 
+	DEPTH_TYPES, 
+	FLOODFORECAST_SOURCE_ORDER,
+	FLOODFORECAST_SOURCE_TYPES,
+	HEALTHFAC_TYPES, 
+	LANDCOVER_TYPES_GROUP, 
+	LANDCOVER_TYPES_INVERSE, 
+	LANDCOVER_TYPES, 
+	LIKELIHOOD_INDEX_INVERSE, 
+	LIKELIHOOD_INDEX, 
+	LIKELIHOOD_TYPES, 
+)
 
 gchart.ComboChart = ComboChart
 
@@ -2839,7 +2853,7 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED = LIKELIHOOD_INDEX.values()[::-1]
 	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED.remove('verylow')
 	
-	panels['flashflood_likelihood_table'] = {
+	panels.path('tables')['flashflood_likelihood'] = {
 		'title': _('Flash Flood Likelihood'),
 		'child': [{
 			'title': LIKELIHOOD_TYPES[v],
@@ -2853,24 +2867,21 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 		} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
 	}
 
-	panels['flashflood_likelihood_chart'] = {
+	panels.path('charts')['flashflood_likelihood'] = {
 		'title': _('Flash Flood Likelihood'),
+		'labels': [LIKELIHOOD_TYPES[k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
 		'child': [{
-			'title': LIKELIHOOD_TYPES[v],
-			'pop': response['pop_flashflood_likelihood'][v],
-			'depth_child': [{
-				'title': DEPTH_TYPES_SIMPLE[d],
-				'pop': response['pop_flashflood_likelihood_depth'][v][d],
-			} for d in DEPTH_INDEX.values()],
-		} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
+			'name': DEPTH_TYPES_SIMPLE[d],
+			'data': [response['pop_flashflood_likelihood_depth'][l][d] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
+		} for d in DEPTH_INDEX.values()],
 	}
 
 	for k,j in response['bysource'].items():
 
 		panels.path('riverflood',k)['key'] = k
-		panels.path('riverflood',k)['title'] = k
+		panels.path('riverflood',k)['title'] = FLOODFORECAST_SOURCE_TYPES[k]
 
-		panels.path('riverflood',k)['riverflood_likelihood_table'] = {
+		panels.path('riverflood',k,'tables')['riverflood_likelihood'] = {
 			'title': _('River Flood Likelihood'),
 			'child': [{
 				'title': LIKELIHOOD_TYPES[v],
@@ -2884,7 +2895,7 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
 		}
 
-		panels.path('riverflood',k)['riverflood_likelihood_chart'] = {
+		panels.path('riverflood',k,'charts')['riverflood_likelihood'] = {
 			'title': _('Flash Flood Likelihood'),
 			'child': [{
 				'title': LIKELIHOOD_TYPES[v],
@@ -2896,7 +2907,7 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
 		}
 
-		panels.path('riverflood',k)['flood_likelihood_overview_table'] = {
+		panels.path('riverflood',k,'tables')['flood_likelihood_overview'] = {
 			'title': _('Flood Likelihood Overview'),
 			'child': [{
 				'code': v['code'],
@@ -2912,7 +2923,7 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 					v['riverflood_forecast_high_pop'],
 					v['riverflood_forecast_med_pop'],
 					v['riverflood_forecast_low_pop'],
-			]} for v in response['child_bysource'][k]]
+			]} for v in response.pathget('child_bysource',k)]
 		}
 
 	if include_section('GeoJson', includes, excludes):
@@ -3388,8 +3399,15 @@ def getFloodriskStatistic(request,filterLock, flag, code):
 
 def getFloodforecastStatistic(request,filterLock, flag, code, date=None, rf_types=[], bring=None):
 
-	response = {'panels':dashboard_floodforecast(request, filterLock, flag, code, date=date, rf_types=rf_types)['panels']}
-	return response
+	panels = dashboard_floodforecast(request, filterLock, flag, code, date=date, rf_types=rf_types)['panels']
+	panels['charts'] = panels['charts'].valueslistbykey('flashflood_likelihood')
+	panels['tables'] = panels['tables'].valueslistbykey('flashflood_likelihood')
+	panels['riverflood'] = panels['riverflood'].valueslistbykey(*FLOODFORECAST_SOURCE_ORDER)
+	for v in panels.pathget('riverflood'):
+		v['tables'] = v['tables'].valueslistbykey('riverflood_likelihood','flood_likelihood_overview')
+		v['charts'] = v['charts'].valueslistbykey('riverflood_likelihood')
+
+	return panels
 
 def getFloodStatistic(request,filterLock, flag, code, date=None, rf_types=[]):
 
