@@ -104,7 +104,7 @@
                     <span class="card-title right">{% readable panels.pop_depth.total_atrisk %}</span>
                 </div>
                 <div class="card-image">
-                    <div id="chart_pie_frisk_pop" class="ch-size"></div>
+                    <div id="chart_pie_frisk_pop" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.pop_depth.child | jsonify | safe }}'></div>
                 </div>
             </div>
         </div>
@@ -117,7 +117,7 @@
                     <span class="card-title right">{% readable panels.building_depth.total_atrisk %}</span>
                 </div>
                 <div class="card-image">
-                    <div id="chart_pie_frisk_build" class="ch-size"></div>
+                    <div id="chart_pie_frisk_build" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.building_depth.child | jsonify | safe }}'></div>
                 </div>
             </div>
         </div>
@@ -130,7 +130,7 @@
                     <span class="card-title right">{% readable panels.area_depth.total_atrisk %}</span>
                 </div>
                 <div class="card-image">
-                    <div id="chart_pie_frisk_area" class="ch-size"></div>
+                    <div id="chart_pie_frisk_area" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.area_depth.child | jsonify | safe }}'></div>
                 </div>
             </div>
         </div>
