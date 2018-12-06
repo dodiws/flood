@@ -144,7 +144,10 @@ def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], 
 
 	spt_filter = request.GET.get('filter') or 'NULL'
 
+	rf_types = [rf_types] if type(rf_types) is not list else rf_types
+	rf_types = [i for i in rf_types if i in FLOODFORECAST_SOURCE_TYPES]
 	response['rf_types'] = rf_types = rf_types or ['gfms','glofas','gfms_glofas',]
+
 	for rf_type in rf_types:
 		if include_section('riverflood', includes, excludes):
 			response.path('bysource')[rf_type] = getFloodForecastBySource(rf_type, targetRisk, spt_filter, flag, code, YEAR, MONTH, DAY, formatted=True)
@@ -2897,14 +2900,19 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 
 		panels.path('riverflood',k,'charts')['riverflood_likelihood'] = {
 			'title': _('Flash Flood Likelihood'),
+			'labels': [LIKELIHOOD_TYPES[l] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
 			'child': [{
-				'title': LIKELIHOOD_TYPES[v],
-				'pop': j['pop_riverflood_likelihood_subtotal'][v],
-				'depth_child': [{
-					'title': DEPTH_TYPES_SIMPLE[d],
-					'pop': j['pop_riverflood_likelihood_depth'][v][d],
-				} for d in DEPTH_INDEX.values()],
-			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
+				'name': DEPTH_TYPES_SIMPLE[d],
+				'data': [j['pop_riverflood_likelihood_depth'][l][d] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
+			} for d in DEPTH_INDEX.values()],
+			# 'child': [{
+			# 	'title': LIKELIHOOD_TYPES[v],
+			# 	'pop': j['pop_riverflood_likelihood_subtotal'][v],
+			# 	'depth_child': [{
+			# 		'title': DEPTH_TYPES_SIMPLE[d],
+			# 		'pop': j['pop_riverflood_likelihood_depth'][v][d],
+			# 	} for d in DEPTH_INDEX.values()],
+			# } for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
 		}
 
 		panels.path('riverflood',k,'tables')['flood_likelihood_overview'] = {
