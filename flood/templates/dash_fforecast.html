@@ -1106,7 +1106,7 @@
                                         <p>{{ riverflood_val.tables.flood_likelihood_overview.description }}</p>
                                         <br/>
                                         <div class="table-responsive-scroll">
-                                            <table id="ggfforecast_overview" class="striped highlight online">
+                                            <table id="ggfforecast_overview" class="striped highlight flood-overview-color online">
                                                 <thead>
                                                     <tr>
                                                         <th rowspan="2">{% trans 'Region' %}</th>
@@ -1127,7 +1127,17 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <tr>
+                                                    {% for parent in riverflood_val.tables.flood_likelihood_overview.parentdata %}
+                                                        <td class="boldRow">{{parent}}</td>
+                                                    {% endfor %}
+                                                    {% for child in riverflood_val.tables.flood_likelihood_overview.child %}
+                                                        <tr class="selectable" onclick="window.document.location='?page=floodforecast&code={{child.code}}';">
+                                                            {% for item in child.value %}
+                                                                <td>{{item}}</td>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    {% endfor %}
+                                                    <!-- <tr>
                                                         <td class="boldRow">{{ riverflood_val.tables.flood_likelihood_overview.description }}</td>
                                                         <td class="ext boldRow">{{ riverflood_val.tables.flood_likelihood_overview.description }}</td>
                                                         <td class="vhigh boldRow">{{ riverflood_val.tables.flood_likelihood_overview.description }}</td>
@@ -1139,9 +1149,9 @@
                                                         <td class="high boldRow">{{ riverflood_val.tables.flood_likelihood_overview.description }}</td>
                                                         <td class="mod boldRow">{{ riverflood_val.tables.flood_likelihood_overview.description }}</td>
                                                         <td class="low boldRow">{{ riverflood_val.tables.flood_likelihood_overview.description }}</td>
-                                                    </tr>
+                                                    </tr> -->
                                                     <!-- {#% for data in glofas_gfms_child %} -->
-                                                    <tr class="selectable" onclick="window.document.location='?page=floodforecast&code={{data.code}}';">
+                                                    <!-- <tr class="selectable" onclick="window.document.location='?page=floodforecast&code={{data.code}}';">
                                                         <td>{{data.na_en}}</td>
                                                         <td class="ext_fill">{{ riverflood_val.tables.flood_likelihood_overview.child }}</td>
                                                         <td class="vhigh_fill">{{ riverflood_val.tables.flood_likelihood_overview.child }}</td>
@@ -1153,7 +1163,7 @@
                                                         <td class="high_fill">{{ riverflood_val.tables.flood_likelihood_overview.child }}</td>
                                                         <td class="mod_fill">{{ riverflood_val.tables.flood_likelihood_overview.child }}</td>
                                                         <td class="low_fill">{{ riverflood_val.tables.flood_likelihood_overview.child }}</td>
-                                                    </tr>
+                                                    </tr> -->
                                                     <!-- {#% endfor %} -->
                                                 </tbody>
                                             </table>
