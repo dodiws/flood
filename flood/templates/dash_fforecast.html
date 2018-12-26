@@ -9,17 +9,19 @@
 {% endblock dashboard_breadcrumb %}
 
 {% block dashboard_content %}
-    <div class="row">
+    <div class="row no-margin">
         {% include "qlink_list.html" %}
     </div>
 
     <div class="row">
         <div class="col s12">
-            <div class="card">
-                <div class="card-content">
+            <div class="card card-dashboard">
+                <div class="card-header red darken-2 white-text">
                     <span class="card-title">
                         {% trans "Map" %}
                     </span>
+                </div>
+                <div class="card-content">
                     <div class="row">
                         <div class="col s12 l3 xl2">
                             <div id="layercontrol">
@@ -360,11 +362,13 @@
 
         {% for flood_type, flood_val in panels.tables.items %}
             <div class="col s12 l6">
-                <div class="card">
-                    <div class="card-content">
+                <div class="card card-dashboard">
+                    <div class="card-header red darken-2 white-text">
                         <span class="card-title">
                             {{ flood_val.title }}
                         </span>
+                    </div>
+                    <div class="card-content">
                         <p>{% trans 'Flash Flood Prediction is updated every hour and valid for the next 6 hours. This data is not calibrated and can only be used for rudimentary flood likelihood prediction.' %}</p>
                         <br/>
                         <div class="table-responsive-scroll">
@@ -376,11 +380,11 @@
                                     </tr>
                                     <tr>
                                         <th>{% trans 'Level' %}</th>
-                                        <th title="{% trans 'Population' %}"><i class="icon-people_affected_population"></i></th>
-                                        <th title="{% trans 'Buildings' %}"><i class="icon-infrastructure_building"></i></th>
+                                        <th title="{% trans 'Population' %}">{% trans 'Population' %}</th>
+                                        <th title="{% trans 'Buildings' %}">{% trans 'Buildings' %}</th>
                                         <th>{% trans 'Level' %}</th>
-                                        <th title="{% trans 'Population' %}"><i class="icon-people_affected_population"></i></th>
-                                        <th title="{% trans 'Buildings' %}"><i class="icon-infrastructure_building"></i></th>
+                                        <th title="{% trans 'Population' %}">{% trans 'Population' %}</th>
+                                        <th title="{% trans 'Buildings' %}">{% trans 'Buildings' %}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1035,12 +1039,22 @@
                     {% for riverflood_method, riverflood_val in panels.riverflood.items %}
                         <div id="{{ riverflood_method }}" class="">
                             <div class="col s12 l6">
-                                <div class="card">
-                                    <div class="card-content">
+                                <div class="card card-dashboard">
+                                    <div class="card-header red darken-2 white-text">
                                         <span class="card-title">
                                             {{ riverflood_val.tables.riverflood_likelihood.title }} <small>{{ riverflood_val.key }}</small>
                                         </span>
-                                        <p>{{ riverflood_val.tables.riverflood_likelihood.description }}</p>
+                                    </div>
+                                    <div class="card-content">
+                                        <p>
+                                            {% if riverflood_method == 'gfms_glofas' %}
+                                                {% trans 'The prediction based on the combination of Global Flood Awareness Sytem (GLOFAS) and Global Flood Monitoring Sytem (GFMS). River Flood is updated every 6 hours and valid for the next 4 days (GFMS) and 20 days (GLOFAS). GLOFAS supersedes GFMS. Data is only partly calibrated and smaller mountainous tributaries not included.' %}
+                                            {% elif riverflood_method == 'glofas' %}
+                                                {% trans 'The prediction based solely on Global Flood Awareness Sytem (GLOFAS). River Flood is updated every 6 hours and valid for the next 20 days. Data is only partly calibrated and smaller mountainous tributaries not included.' %}
+                                            {% elif riverflood_method == 'gfms' %}
+                                                {% trans 'The prediction based solely on Global Flood Monitoring Sytem (GFMS). River Flood is updated every 6 hours and valid for the next 4 days. Data is only partly calibrated and smaller mountainous tributaries not included.' %}
+                                            {% endif %}
+                                        </p>
                                         <br/>
                                         <div class="table-responsive-scroll">
                                             <table id="" class="flood-likelihood-color">
@@ -1051,11 +1065,11 @@
                                                     </tr>
                                                     <tr>
                                                         <th>{% trans 'Level' %}</th>
-                                                        <th title="{% trans 'Population' %}"><i class="icon-people_affected_population"></i></th>
-                                                        <th title="{% trans 'Buildings' %}"><i class="icon-infrastructure_building"></i></th>
+                                                        <th title="{% trans 'Population' %}">{% trans 'Population' %}</th>
+                                                        <th title="{% trans 'Buildings' %}">{% trans 'Buildings' %}</th>
                                                         <th>{% trans 'Level' %}</th>
-                                                        <th title="{% trans 'Population' %}"><i class="icon-people_affected_population"></i></th>
-                                                        <th title="{% trans 'Buildings' %}"><i class="icon-infrastructure_building"></i></th>
+                                                        <th title="{% trans 'Population' %}">{% trans 'Population' %}</i></th>
+                                                        <th title="{% trans 'Buildings' %}">{% trans 'Buildings' %}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -1093,17 +1107,27 @@
                                         </span>
                                     </div>
                                     <div class="card-image">
-                                        <div id="chart_bar_stack_fforecast_{{ riverflood_method }}" class="ch-size-fforecast bar-stacked-col-chart" data-color="colorFloodRiskForecast" data-xaxis='["Low", "Medium", "High", "Very High", "Extreme"]' data-val='[{"name": "Low", "data": [2,20,40,20,50]}, {"name": "Moderate", "data": [10,20,40,20,50]}, {"name": "High", "data": [10,20,40,20,50]}]' ></div>
+                                        <div id="chart_bar_stack_fforecast_{{ riverflood_method }}" class="ch-size-fforecast bar-stacked-col-chart" data-color="colorFloodRiskForecast" data-xaxis='{{ riverflood_val.charts.riverflood_likelihood.labels | jsonify | safe }}' data-val='[{"name": "Low", "data": [2,20,40,20,50]}, {"name": "Moderate", "data": [10,20,40,20,50]}, {"name": "High", "data": [10,20,40,20,50]}]' ></div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col s12">
-                                <div class="card">
-                                    <div class="card-content">
+                                <div class="card card-dashboard">
+                                    <div class="card-header red darken-2 white-text">
                                         <span class="card-title">
                                             {{ riverflood_val.tables.flood_likelihood_overview.title }} <small>{{ riverflood_val.key }}</small>
                                         </span>
-                                        <p>{{ riverflood_val.tables.flood_likelihood_overview.description }}</p>
+                                    </div>
+                                    <div class="card-content">
+                                        <p>
+                                            {% if riverflood_method == 'gfms_glofas' %}
+                                                {% trans 'The summary of Flash Flood Prediction and River Flood Prediction occured in Afghanistan. The riverflood prediction is based on the combination of Global Flood Awareness Sytem (GLOFAS) and Global Flood Monitoring Sytem (GFMS) method. Flash Flood is updated every hour and valid for the next 6 hours while River Flood is updated every 6 hours and valid for the next 4 days (GFMS) and 20 days (GLOFAS). GLOFAS supersedes GFMS. Data is only partly calibrated and smaller mountainous tributaries not included.' %}
+                                            {% elif riverflood_method == 'glofas' %}
+                                                {% trans 'The summary of Flash Flood Prediction and River Flood Prediction occured in Afghanistan. The riverflood prediction is based Global Flood Awareness Sytem (GLOFAS) method. Flash Flood is updated every hour and valid for the next 6 hours while River Flood is updated every 6 hours and valid for the next 4 days.' %}
+                                            {% elif riverflood_method == 'gfms' %}
+                                                {% trans 'The summary of Flash Flood Prediction and River Flood Prediction occured in Afghanistan. The riverflood prediction is based on the Global Flood Monitoring Sytem (GFMS) method. Flash Flood is updated every hour and valid for the next 6 hours while River Flood is updated every 6 hours and valid for the next 4 days.' %}
+                                            {% endif %}
+                                        </p>
                                         <br/>
                                         <div class="table-responsive-scroll">
                                             <table id="ggfforecast_overview" class="striped highlight flood-overview-color online">

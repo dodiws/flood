@@ -9,17 +9,19 @@
 {% endblock dashboard_breadcrumb %}
 
 {% block dashboard_content %}
-    <div class="row">
+    <div class="row no-margin">
         {% include "qlink_list.html" %}
     </div>
 
     <div class="row">
         <div class="col s12">
-            <div class="card">
-                <div class="card-content">
+            <div class="card card-dashboard">
+                <div class="card-header red darken-2 white-text">
                     <span class="card-title">
                         {% trans "Map" %}
                     </span>
+                </div>
+                <div class="card-content">
                     <div class="row">
                         <div class="col s12 l3 xl2">
                             <div id="layercontrol">
@@ -100,11 +102,17 @@
             <div class="card card-graph">
                 <div class="card-header red darken-3 white-text z-depth-2">
                     <span class="card-title">{% trans "Flood Risk Population" %}</span>
-                    <i class="icon-people_affected_population left"></i>
-                    <span class="card-title right">{% readable panels.pop_depth.total_atrisk %}</span>
+                    <!-- <i class="icon-people_affected_population left"></i> -->
+                    <!-- <span class="card-title right">{% readable panels.pop_depth.total_atrisk %}</span> -->
                 </div>
                 <div class="card-image">
                     <div id="chart_pie_frisk_pop" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.pop_depth.child | jsonify | safe }}'></div>
+                    <div class="center-align grey-text text-darken-2 affected-count">
+                        <span class="red-text text-darken-3">{% readable panels.pop_depth.total_atrisk %}</span>
+                        of
+                        <span class="red-text text-darken-3">{% readable panels.pop_depth.total %}</span>
+                        at risk
+                    </div>
                 </div>
             </div>
         </div>
@@ -113,11 +121,17 @@
             <div class="card card-graph">
                 <div class="card-header red darken-3 white-text z-depth-2">
                     <span class="card-title">{% trans "Flood Risk Building" %}</span>
-                    <i class="icon-infrastructure_building left"></i>
-                    <span class="card-title right">{% readable panels.building_depth.total_atrisk %}</span>
+                    <!-- <i class="icon-infrastructure_building left"></i> -->
+                    <!-- <span class="card-title right">{% readable panels.building_depth.total_atrisk %}</span> -->
                 </div>
                 <div class="card-image">
                     <div id="chart_pie_frisk_build" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.building_depth.child | jsonify | safe }}'></div>
+                    <div class="center-align grey-text text-darken-2 affected-count">
+                        <span class="red-text text-darken-3">{% readable panels.building_depth.total_atrisk %}</span>
+                        of
+                        <span class="red-text text-darken-3">{% readable panels.building_depth.total %}</span>
+                        at risk
+                    </div>
                 </div>
             </div>
         </div>
@@ -126,24 +140,32 @@
             <div class="card card-graph">
                 <div class="card-header red darken-3 white-text z-depth-2">
                     <span class="card-title">{% trans "Flood Risk Area" %}</span>
-                    <i class="fa fa-tree left"></i>
-                    <span class="card-title right">{% readable panels.area_depth.total_atrisk %}</span>
+                    <!-- <i class="fa fa-tree left"></i> -->
+                    <!-- <span class="card-title right">{% readable panels.area_depth.total_atrisk %}</span> -->
                 </div>
                 <div class="card-image">
                     <div id="chart_pie_frisk_area" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.area_depth.child | jsonify | safe }}'></div>
+                    <div class="center-align grey-text text-darken-2 affected-count">
+                        <span class="red-text text-darken-3">{% readable panels.area_depth.total_atrisk %}</span>
+                        of
+                        <span class="red-text text-darken-3">{% readable panels.area_depth.total %}</span>
+                        at risk
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="col s12">
-            <div class="card">
-                <div class="card-content">
+            <div class="card card-dashboard">
+                <div class="card-header red darken-2 white-text">
                     <span class="card-title">
                         {% trans "Population Living in Flood Risk Areas" %}
                     </span>
+                </div>
+                <div class="card-content">
                     <p>{% trans "Population, buildings and area within 100-year inundation flood zone (source: NATO Flood Map). Flood risk category is estimated based upon potential flood depth: Low flood risk relates to inundation more than 29cm, moderate to 1.21m and high flood risk more than 2.7m. The 100-year inundation interval, implies that every year there is a 1% chance of such a flood event occurring. Most flood events will be in 5,10, 20-year inundation interval." %}</p>
                     <div class="table-responsive-scroll">
-                        <table class="striped highlight online">
+                        <table class="highlight online">
                             <thead>
                                 <tr>
                                     <th rowspan="2">{% trans "Region" %}</th>
