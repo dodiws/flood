@@ -1,33 +1,30 @@
 =====
-geodb
+flood
 =====
 
-Process base mapping data used by other modules.
-Mandatory Module for ASDC
+Process and display flood risk and forecast data.
+Optional Module for ISDC
 
 Quick start
 -----------
 
-1. Add "geodb" to your INSTALLED_APPS setting like this::
+1. Add "flood" to your DASHBOARD_PAGE_MODULES setting like this::
 
-    INSTALLED_APPS = [
+    DASHBOARD_PAGE_MODULES = [
         ...
-        'geodb',
+        'flood',
     ]
 
-    If necessary add "geodb" in (check comment for description): 
-        DASHBOARD_PAGE_MODULES, 
-        GETRISKEXECUTEEXTERNAL_MODULES, 
+    If necessary add "flood" in (check comment for description): 
         QUICKOVERVIEW_MODULES, 
         MAP_APPS_TO_DB_CUSTOM
 
-    For development in virtualenv add GEODB_PARENT_DIR path to VENV_NAME/bin/activate:
+    For development in virtualenv add FLOOD_PROJECT_DIR path to VENV_NAME/bin/activate:
         export PYTHONPATH=${PYTHONPATH}:\
-        ${HOME}/GEODB_PARENT_DIR
+        ${HOME}/FLOOD_PROJECT_DIR
 
-2. Include the geodb URLconf in geonode/urls.py like this::
+2. To create the flood tables:
 
-    url('', include('geodb.urls')),
-
-3. Run `python manage.py migrate geodb` to create the geodb models.
+   python manage.py makemigrations
+   python manage.py migrate flood
 

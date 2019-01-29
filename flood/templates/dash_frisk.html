@@ -103,14 +103,14 @@
                 <div class="card-header red darken-3 white-text z-depth-2">
                     <span class="card-title">{% trans "Flood Risk Population" %}</span>
                     <!-- <i class="icon-people_affected_population left"></i> -->
-                    <!-- <span class="card-title right">{% readable panels.pop_depth.total_atrisk %}</span> -->
+                    <!-- <span class="card-title right">{% readable panels.charts.pop_depth.total_atrisk %}</span> -->
                 </div>
                 <div class="card-image">
-                    <div id="chart_pie_frisk_pop" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.pop_depth.child | jsonify | safe }}'></div>
+                    <div id="chart_pie_frisk_pop" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.charts.pop_depth.child | jsonify | safe }}'></div>
                     <div class="center-align grey-text text-darken-2 affected-count">
-                        <span class="red-text text-darken-3">{% readable panels.pop_depth.total_atrisk %}</span>
+                        <span class="red-text text-darken-3">{% readable panels.charts.pop_depth.total_atrisk %}</span>
                         of
-                        <span class="red-text text-darken-3">{% readable panels.pop_depth.total %}</span>
+                        <span class="red-text text-darken-3">{% readable panels.charts.pop_depth.total %}</span>
                         at risk
                     </div>
                 </div>
@@ -122,14 +122,14 @@
                 <div class="card-header red darken-3 white-text z-depth-2">
                     <span class="card-title">{% trans "Flood Risk Building" %}</span>
                     <!-- <i class="icon-infrastructure_building left"></i> -->
-                    <!-- <span class="card-title right">{% readable panels.building_depth.total_atrisk %}</span> -->
+                    <!-- <span class="card-title right">{% readable panels.charts.building_depth.total_atrisk %}</span> -->
                 </div>
                 <div class="card-image">
-                    <div id="chart_pie_frisk_build" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.building_depth.child | jsonify | safe }}'></div>
+                    <div id="chart_pie_frisk_build" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.charts.building_depth.child | jsonify | safe }}'></div>
                     <div class="center-align grey-text text-darken-2 affected-count">
-                        <span class="red-text text-darken-3">{% readable panels.building_depth.total_atrisk %}</span>
+                        <span class="red-text text-darken-3">{% readable panels.charts.building_depth.total_atrisk %}</span>
                         of
-                        <span class="red-text text-darken-3">{% readable panels.building_depth.total %}</span>
+                        <span class="red-text text-darken-3">{% readable panels.charts.building_depth.total %}</span>
                         at risk
                     </div>
                 </div>
@@ -141,14 +141,14 @@
                 <div class="card-header red darken-3 white-text z-depth-2">
                     <span class="card-title">{% trans "Flood Risk Area" %}</span>
                     <!-- <i class="fa fa-tree left"></i> -->
-                    <!-- <span class="card-title right">{% readable panels.area_depth.total_atrisk %}</span> -->
+                    <!-- <span class="card-title right">{% readable panels.charts.area_depth.total_atrisk %}</span> -->
                 </div>
                 <div class="card-image">
-                    <div id="chart_pie_frisk_area" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.area_depth.child | jsonify | safe }}'></div>
+                    <div id="chart_pie_frisk_area" class="ch-size donut-chart" data-color=colorFloodRisk data-val='{{ panels.charts.area_depth.child | jsonify | safe }}'></div>
                     <div class="center-align grey-text text-darken-2 affected-count">
-                        <span class="red-text text-darken-3">{% readable panels.area_depth.total_atrisk %}</span>
+                        <span class="red-text text-darken-3">{% readable panels.charts.area_depth.total_atrisk %}</span>
                         of
-                        <span class="red-text text-darken-3">{% readable panels.area_depth.total %}</span>
+                        <span class="red-text text-darken-3">{% readable panels.charts.area_depth.total %}</span>
                         at risk
                     </div>
                 </div>
@@ -192,10 +192,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for parent in panels.adm_lcgroup_pop_area.parentdata %}
+                                {% for parent in panels.tables.adm_lcgroup_pop_area.parentdata %}
                                     <td class="boldRow">{{parent}}</td>
                                 {% endfor %}
-                                {% for child in panels.adm_lcgroup_pop_area.child %}
+                                {% for child in panels.tables.adm_lcgroup_pop_area.child %}
                                     <tr class="selectable" onclick="window.document.location='?page=floodrisk&code={{child.code}}';">
                                         {% for item in child.value %}
                                             <td>{{item}}</td>

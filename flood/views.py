@@ -61,7 +61,7 @@ from geodb.views import (
 from django.db import connection, connections
 from django.db.models import Count, Sum
 from geonode.maps.views import _resolve_map, _PERMISSION_MSG_VIEW
-from geonode.utils import include_section, none_to_zero, query_to_dicts, RawSQL_nogroupby, ComboChart, merge_dict, div_by_zero_is_zero, dict_ext, list_ext
+from geonode.utils import include_section, none_to_zero, query_to_dicts, RawSQL_nogroupby, ComboChart, merge_dict, div_by_zero_is_zero, dict_ext, list_ext, linenum
 from matrix.models import matrix
 from pprint import pprint
 from pytz import timezone, all_timezones
@@ -87,13 +87,19 @@ from geodb.enumerations import (
 	FLOODFORECAST_SOURCE_ORDER,
 	FLOODFORECAST_SOURCE_TYPES,
 	HEALTHFAC_TYPES, 
+	LANDCOVER_INDEX,
 	LANDCOVER_TYPES_GROUP, 
 	LANDCOVER_TYPES_INVERSE, 
 	LANDCOVER_TYPES, 
 	LIKELIHOOD_INDEX_INVERSE, 
 	LIKELIHOOD_INDEX, 
 	LIKELIHOOD_TYPES, 
+	PROVINCESUMMARY_LANDCOVER_TYPES,
+	PROVINCESUMMARY_LANDCOVER_TYPES_ORDER,
 )
+from django.conf.urls import url
+from tastypie.utils import trailing_slash
+from tastypie.authentication import BasicAuthentication, SessionAuthentication, OAuthAuthentication
 
 gchart.ComboChart = ComboChart
 
@@ -121,16 +127,10 @@ def get_dashboard_meta(*args,**kwargs):
 	}
 	return response
 
-def getQuickOverview(request, filterLock, flag, code, includes=[], excludes=[]):
-	response = {}
-	response.update(getFloodForecast(request, filterLock, flag, code, excludes=['getCommonUse','detail']))
-	response.update(getRawFloodRisk(filterLock, flag, code, excludes=['landcoverfloodrisk']))
-	return response
-
 # from geodb.geo_calc
 
-def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], rf_types=None, date=''):
-	response = dict_ext()
+def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], rf_types=None, date='', response=dict_ext(), wkt=None):
+	# response = dict_ext()
 
 	try:
 		YEAR, MONTH, DAY = date.split('-')
@@ -150,8 +150,8 @@ def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], 
 
 	for rf_type in rf_types:
 		if include_section('riverflood', includes, excludes):
-			response.path('bysource')[rf_type] = getFloodForecastBySource(rf_type, targetRisk, spt_filter, flag, code, YEAR, MONTH, DAY, formatted=True)
-		if include_section('detail', includes, excludes):
+			response.path('bysource')[rf_type] = getFloodForecastBySource(rf_type, targetRisk, filterLock, flag, code, YEAR, MONTH, DAY, formatted=True, wkt=wkt)
+		if include_section('riverflood_detail', includes, excludes):
 			if rf_type == 'gfms':
 				response.path('child_bysource')[rf_type] = getProvinceSummary(filterLock, flag, code)
 			if rf_type == 'glofas':
@@ -169,15 +169,15 @@ def getFloodForecast(request, filterLock, flag, code, includes=[], excludes=[], 
 
 		sliced = {c['basinmember__basins__riskstate']:c['count'] for c in counts}
 		response['pop_flashflood_likelihood'] = {v:sliced.get(v) or 0 for k,v in LIKELIHOOD_INDEX.items()}
-		response['pop_flashflood_likelihood_total'] = sum(response.path('floodforecast','pop_flashflood_likelihood').values())
+		response['pop_flashflood_likelihood_total'] = sum(response.path('pop_flashflood_likelihood').values())
 
 		sliced = {c['basinmember__basins__riskstate']:c['areaatrisk'] for c in counts}
 		response['area_flashflood_likelihood'] = {v:round((sliced.get(v) or 0)/1000000,0) for k,v in LIKELIHOOD_INDEX.items()}
-		response['area_flashflood_likelihood_total'] = sum(response.path('floodforecast','area_flashflood_likelihood').values())
+		response['area_flashflood_likelihood_total'] = sum(response.path('area_flashflood_likelihood').values())
 
 		sliced = {c['basinmember__basins__riskstate']:c['houseatrisk'] for c in counts}
 		response['building_flashflood_likelihood'] = {v:sliced.get(v) or 0 for k,v in LIKELIHOOD_INDEX.items()}
-		response['building_flashflood_likelihood_total'] = sum(response.path('floodforecast','building_flashflood_likelihood').values())
+		response['building_flashflood_likelihood_total'] = sum(response.path('building_flashflood_likelihood').values())
 
 		r = response
 		f = response.path('bysource')[next(iter(response.path('bysource')))] # get first forecast
@@ -267,80 +267,87 @@ def getFloodForecast_ORIG(request, filterLock, flag, code, includes=[], excludes
 
 	return response
 
-def getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[]):
+def getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[], response=dict_ext()):
 	
 	# response = dict_ext(getCommonUse(request, flag, code))
-	response = dict_ext()
+	# response = dict_ext()
 
 	targetRiskIncludeWater = AfgFldzonea100KRiskLandcoverPop.objects.all()
 	targetRisk = targetRiskIncludeWater.exclude(agg_simplified_description='Water body and Marshland')
 	targetBase = AfgLndcrva.objects.all()
 
-	if include_section(['baseline','pop_depth','area_depth','building_depth'], includes, excludes):
-		response = getBaseline(request, filterLock, flag, code, includes, excludes, baselineonly=False)
-		cached = flag in ['entireAfg','currentProvince']
-		if cached:
+	# if include_section(['baseline','pop_depth','area_depth','building_depth'], includes, excludes):
+	if ('baseline' in response.pathget('cache','getBaseline')) and ('floodrisk' in response.pathget('cache','getBaseline')):
+		response.update(response.pathget('cache','getBaseline'))
+	else:
+		response.update(getBaseline(request, filterLock, flag, code, includes=includes, excludes=excludes, baselineonly=False))
 
-			# separate query for building_depth because not cached
-			counts =  getRiskNumber(targetRisk.exclude(mitigated_pop__gt=0), filterLock, 'deeperthan', None, None, 'area_buildings', flag, code, None)
-			sliced = {c['deeperthan']:c['houseatrisk'] for c in counts}
-			response.path('floodrisk')['building_depth'] = {k:(sliced.get(v) or 0) for k,v in DEPTH_TYPES.items()}
+	# response = response.pathget('group','baseline') or getBaseline(request, filterLock, flag, code, includes, excludes, baselineonly=False)
+	baseline = response.path('baseline')
+	floodrisk = response.path('floodrisk')
+	cached = flag in ['entireAfg','currentProvince']
+	if cached:
 
-		else:
-			# response['baseline'] = getBaseline(filterLock, flag, code, includes=['pop_lc','area_lc','building_lc'])
+		# separate query for building_depth because not cached
+		counts =  getRiskNumber(targetRisk.exclude(mitigated_pop__gt=0), filterLock, 'deeperthan', None, None, 'area_buildings', flag, code, None)
+		sliced = {c['deeperthan']:c['houseatrisk'] for c in counts}
+		floodrisk['building_depth'] = {k:(sliced.get(v) or 0) for k,v in DEPTH_TYPES.items()}
 
-			counts =  getRiskNumber(targetRisk.exclude(mitigated_pop__gt=0), filterLock, 'deeperthan', 'fldarea_population', 'fldarea_sqm', 'area_buildings', flag, code, None)
+	else:
+		# response['baseline'] = getBaseline(filterLock, flag, code, includes=['pop_lc','area_lc','building_lc'])
 
-			sliced = {c['deeperthan']:c['count'] for c in counts}
-			response.path('floodrisk')['pop_depth'] = {k:(sliced.get(v) or 0) for k,v in DEPTH_TYPES.items()}
+		counts =  getRiskNumber(targetRisk.exclude(mitigated_pop__gt=0), filterLock, 'deeperthan', 'fldarea_population', 'fldarea_sqm', 'area_buildings', flag, code, None)
 
-			sliced = {c['deeperthan']:c['areaatrisk'] for c in counts}
-			response.path('floodrisk')['area_depth'] = {k:round((sliced.get(v) or 0)/1000000,1) for k,v in DEPTH_TYPES.items()}
+		sliced = {c['deeperthan']:c['count'] for c in counts}
+		floodrisk['pop_depth'] = {k:(sliced.get(v) or 0) for k,v in DEPTH_TYPES.items()}
 
-			sliced = {c['deeperthan']:c['houseatrisk'] for c in counts}
-			response.path('floodrisk')['building_depth'] = {k:(sliced.get(v) or 0) for k,v in DEPTH_TYPES.items()}
-			# response.path('floodrisk')['building_total'] = sum([c['houseatrisk'] for c in counts if c['deeperthan'] in DEPTH_TYPES_INVERSE])
+		sliced = {c['deeperthan']:c['areaatrisk'] for c in counts}
+		floodrisk['area_depth'] = {k:round((sliced.get(v) or 0)/1000000,1) for k,v in DEPTH_TYPES.items()}
 
-			counts =  getRiskNumber(targetRiskIncludeWater.exclude(mitigated_pop__gt=0), filterLock, 'agg_simplified_description', 'fldarea_population', 'fldarea_sqm', 'area_buildings', flag, code, None)
+		sliced = {c['deeperthan']:c['houseatrisk'] for c in counts}
+		floodrisk['building_depth'] = {k:(sliced.get(v) or 0) for k,v in DEPTH_TYPES.items()}
+		# floodrisk['building_total'] = sum([c['houseatrisk'] for c in counts if c['deeperthan'] in DEPTH_TYPES_INVERSE])
 
-			sliced = {c['agg_simplified_description']:c['count'] for c in counts}
-			response.path('floodrisk')['pop_lc'] = {k:sliced.get(v) or 0 for k,v in LANDCOVER_TYPES.items()}
+		counts =  getRiskNumber(targetRiskIncludeWater.exclude(mitigated_pop__gt=0), filterLock, 'agg_simplified_description', 'fldarea_population', 'fldarea_sqm', 'area_buildings', flag, code, None)
 
-			sliced = {c['agg_simplified_description']:c['areaatrisk'] for c in counts}
-			response.path('floodrisk')['area_lc'] = {k:round((sliced.get(v) or 0)/1000000, 1) for k,v in LANDCOVER_TYPES.items()}
+		sliced = {c['agg_simplified_description']:c['count'] for c in counts}
+		floodrisk['pop_lc'] = {k:sliced.get(v) or 0 for k,v in LANDCOVER_TYPES.items()}
 
-			response.path('floodrisk')['settlement_likelihood_total'] = getSettlementAtFloodRisk(filterLock, flag, code)
+		sliced = {c['agg_simplified_description']:c['areaatrisk'] for c in counts}
+		floodrisk['area_lc'] = {k:round((sliced.get(v) or 0)/1000000, 1) for k,v in LANDCOVER_TYPES.items()}
 
-		response.path('floodrisk')['pop_lcgroup'] = {k:sum([response['floodrisk']['pop_lc'].get(i) or 0 for i in v]) for k,v in LANDCOVER_TYPES_GROUP.items()}
-		response.path('floodrisk')['area_lcgroup'] = {k:sum([response['floodrisk']['area_lc'].get(i) or 0 for i in v]) for k,v in LANDCOVER_TYPES_GROUP.items()}
-		
-		response.path('floodrisk')['pop_total'] = sum(response['floodrisk']['pop_depth'].values())
-		response.path('floodrisk')['area_total'] = sum(response['floodrisk']['area_depth'].values())
-		response.path('floodrisk')['building_total'] = sum(response['floodrisk']['building_depth'].values())
+		floodrisk['settlement_likelihood_total'] = getSettlementAtFloodRisk(filterLock, flag, code)
+
+	floodrisk['pop_lcgroup'] = {k:sum([floodrisk['pop_lc'].get(i) or 0 for i in v]) for k,v in LANDCOVER_TYPES_GROUP.items()}
+	floodrisk['area_lcgroup'] = {k:sum([floodrisk['area_lc'].get(i) or 0 for i in v]) for k,v in LANDCOVER_TYPES_GROUP.items()}
+	
+	floodrisk['pop_total'] = sum(floodrisk['pop_depth'].values())
+	floodrisk['area_total'] = sum(floodrisk['area_depth'].values())
+	floodrisk['building_total'] = sum(floodrisk['building_depth'].values())
+
+	floodrisk['pop_depth_percent'] = {k:round(div_by_zero_is_zero(v, baseline['pop_total'])*100, 0) for k,v in floodrisk['pop_depth'].items()}
+	floodrisk['pop_depth_percent_total'] = sum(floodrisk['pop_depth_percent'].values())
+
+	floodrisk['area_depth_percent'] = {k:round(div_by_zero_is_zero(v, baseline['area_total'])*100, 0) for k,v in floodrisk['area_depth'].items()}
+	floodrisk['area_depth_percent_total'] = sum(floodrisk['area_depth_percent'].values())
+
+	floodrisk['building_depth_percent'] = {k:round(div_by_zero_is_zero(v, baseline['building_total'])*100, 0) for k,v in floodrisk['building_depth'].items()}
+	floodrisk['building_depth_percent_total'] = sum(floodrisk['building_depth_percent'].values())
+
+	floodrisk['pop_lc_percent'] = {k:round(div_by_zero_is_zero(v, baseline['pop_lc'][k])*100, 0) for k,v in floodrisk['pop_lc'].items()}
+	floodrisk['area_lc_percent'] = {k:round(div_by_zero_is_zero(v, baseline['area_lc'][k])*100, 0) for k,v in floodrisk['area_lc'].items()}
+
+	floodrisk['settlement_likelihood_total_percent'] = int(round((div_by_zero_is_zero((floodrisk['settlement_likelihood_total'] or 0),(response.path('baseline')['settlement_total'] or 1)))*100,0))
+	# floodrisk['pop_depth_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(floodrisk['pop_total'] or 1)))*100,0)) for k,v in floodrisk['pop_depth'].items()}
+	floodrisk['pop_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(floodrisk['pop_lcgroup'][k] or 1)))*100,0)) for k,v in floodrisk['pop_lcgroup'].items()}
+	floodrisk['area_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(floodrisk['area_lcgroup'][k] or 1)))*100,0)) for k,v in floodrisk['area_lcgroup'].items()}
 
 	if include_section(['mitigatedpop_depth'], includes, excludes):
 		counts = getRiskNumber(targetRisk.exclude(mitigated_pop=0), filterLock, 'deeperthan', 'mitigated_pop', 'fldarea_sqm', 'area_buildings', flag, code, None)
 
 		sliced = {c['deeperthan']:c['count'] for c in counts}
-		response.path('floodrisk')['mitigatedpop_depth'] = {k:sliced.get(v) or 0 for k,v in DEPTH_TYPES.items()}
-		response.path('floodrisk')['mitigatedpop_depth_total'] = sum(response['floodrisk']['mitigatedpop_depth'].values())
-
-	response.path('floodrisk')['pop_depth_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['pop_total'])*100, 0) for k,v in response['floodrisk']['pop_depth'].items()}
-	response.path('floodrisk')['pop_depth_percent_total'] = sum(response.path('floodrisk')['pop_depth_percent'].values())
-
-	response.path('floodrisk')['area_depth_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['area_total'])*100, 0) for k,v in response['floodrisk']['area_depth'].items()}
-	response.path('floodrisk')['area_depth_percent_total'] = sum(response.path('floodrisk')['area_depth_percent'].values())
-
-	response.path('floodrisk')['building_depth_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['building_total'])*100, 0) for k,v in response['floodrisk']['building_depth'].items()}
-	response.path('floodrisk')['building_depth_percent_total'] = sum(response.path('floodrisk')['building_depth_percent'].values())
-
-	response.path('floodrisk')['pop_lc_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['pop_lc'][k])*100, 0) for k,v in response['floodrisk']['pop_lc'].items()}
-	response.path('floodrisk')['area_lc_percent'] = {k:round(div_by_zero_is_zero(v, response['baseline']['area_lc'][k])*100, 0) for k,v in response['floodrisk']['area_lc'].items()}
-
-	response.path('floodrisk')['settlement_likelihood_total_percent'] = int(round((div_by_zero_is_zero((response.path('floodrisk')['settlement_likelihood_total'] or 0),(response.path('baseline')['settlement_total'] or 1)))*100,0))
-	# response.path('floodrisk')['pop_depth_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['floodrisk']['pop_total'] or 1)))*100,0)) for k,v in response.path('floodrisk')['pop_depth'].items()}
-	response.path('floodrisk')['pop_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['floodrisk']['pop_lcgroup'][k] or 1)))*100,0)) for k,v in response.path('floodrisk')['pop_lcgroup'].items()}
-	response.path('floodrisk')['area_lcgroup_percent'] = {k:int(round((div_by_zero_is_zero((v or 0),(response['floodrisk']['area_lcgroup'][k] or 1)))*100,0)) for k,v in response.path('floodrisk')['area_lcgroup'].items()}
+		floodrisk['mitigatedpop_depth'] = {k:sliced.get(v) or 0 for k,v in DEPTH_TYPES.items()}
+		floodrisk['mitigatedpop_depth_total'] = sum(floodrisk['mitigatedpop_depth'].values())
 
 	#if include_section('GeoJson', includes, excludes):
 	# response['GeoJson'] = json.dumps(getGeoJson(request, flag, code))
@@ -1025,9 +1032,142 @@ def getFloodInfoVillages(request):
 	context_dict['floodriskLC_area_chart'] = gchart.PieChart(SimpleDataSource(data=dataFLRiskPop), html_id="pie_chart4", options={'title': _("Flood Risk Area Exposure by Landcover type"), 'width': 225,'height': 225, 'pieSliceText': _('percentage'),'legend': {'position': 'top', 'maxLines':3}})
 
 	context_dict.pop('position')
-	print context_dict
+	print linenum(), context_dict
 	return render_to_response(template,
 								  RequestContext(request, context_dict))
+
+def getFloodInfoVillagesCommon(village):
+	# template = './floodInfo.html'
+	# village = request.GET["v"]
+	currentdate = datetime.datetime.utcnow()
+	year = currentdate.strftime("%Y")
+	month = currentdate.strftime("%m")
+	day = currentdate.strftime("%d")
+
+	context_dict = dict_ext(getCommonVillageData(village))
+
+	targetRiskIncludeWater = AfgFldzonea100KRiskLandcoverPop.objects.all().filter(vuid=village)
+	targetRisk = targetRiskIncludeWater.exclude(agg_simplified_description='Water body and Marshland')
+
+	# riverflood
+	currRF = targetRisk.select_related("basinmembers").defer('basinmember__wkb_geometry').exclude(basinmember__basins__riskstate=None).filter(basinmember__basins__forecasttype='riverflood',basinmember__basins__datadate='%s-%s-%s' %(year,month,day))
+	currRF = currRF.values('basinmember__basins__riskstate').annotate(pop=Sum('fldarea_population'), area=Sum('fldarea_sqm')).values('basinmember__basins__riskstate','pop', 'area')
+	temp = dict([(c['basinmember__basins__riskstate'], c['pop']) for c in currRF])
+	context_dict['riverflood_forecast_verylow_pop']=round(temp.get(1, 0) or 0,0)
+	context_dict['riverflood_forecast_low_pop']=round(temp.get(2, 0) or 0,0)
+	context_dict['riverflood_forecast_med_pop']=round(temp.get(3, 0) or 0,0)
+	context_dict['riverflood_forecast_high_pop']=round(temp.get(4, 0) or 0,0)
+	context_dict['riverflood_forecast_veryhigh_pop']=round(temp.get(5, 0) or 0,0)
+	context_dict['riverflood_forecast_extreme_pop']=round(temp.get(6, 0) or 0,0)
+
+	currFF = targetRisk.select_related("basinmembers").defer('basinmember__wkb_geometry').exclude(basinmember__basins__riskstate=None).filter(basinmember__basins__forecasttype='flashflood',basinmember__basins__datadate='%s-%s-%s' %(year,month,day))
+	currFF = currFF.values('basinmember__basins__riskstate').annotate(pop=Sum('fldarea_population'), area=Sum('fldarea_sqm')).values('basinmember__basins__riskstate','pop', 'area')
+	temp = dict([(c['basinmember__basins__riskstate'], c['pop']) for c in currFF])
+	context_dict['flashflood_forecast_verylow_pop']=round(temp.get(1, 0) or 0,0)
+	context_dict['flashflood_forecast_low_pop']=round(temp.get(2, 0) or 0,0)
+	context_dict['flashflood_forecast_med_pop']=round(temp.get(3, 0) or 0,0)
+	context_dict['flashflood_forecast_high_pop']=round(temp.get(4, 0) or 0,0)
+	context_dict['flashflood_forecast_veryhigh_pop']=round(temp.get(5, 0) or 0,0)
+	context_dict['flashflood_forecast_extreme_pop']=round(temp.get(6, 0) or 0,0)
+
+	floodRisk = targetRisk.values('deeperthan').annotate(pop=Sum('fldarea_population'), area=Sum('fldarea_sqm')).values('deeperthan','pop', 'area')
+	temp = dict([(c['deeperthan'], c['pop']) for c in floodRisk])
+	context_dict['high_risk_population']=round(temp.get('271 cm', 0) or 0,0)
+	context_dict['med_risk_population']=round(temp.get('121 cm', 0) or 0, 0)
+	context_dict['low_risk_population']=round(temp.get('029 cm', 0) or 0,0)
+	context_dict['total_risk_population']=context_dict['high_risk_population']+context_dict['med_risk_population']+context_dict['low_risk_population']
+	temp = dict([(c['deeperthan'], c['area']) for c in floodRisk])
+	context_dict['high_risk_area']=round((temp.get('271 cm', 0) or 0)/1000000,1)
+	context_dict['med_risk_area']=round((temp.get('121 cm', 0) or 0)/1000000,1)
+	context_dict['low_risk_area']=round((temp.get('029 cm', 0) or 0)/1000000,1)
+
+
+	floodRiskLC = targetRiskIncludeWater.values('agg_simplified_description').annotate(pop=Sum('fldarea_population'), area=Sum('fldarea_sqm')).values('agg_simplified_description','pop', 'area')
+	temp = dict([(c['agg_simplified_description'], c['pop']) for c in floodRiskLC])
+	context_dict['water_body_pop_risk']=round(temp.get('Water body and Marshland', 0) or 0,0)
+	context_dict['barren_land_pop_risk']=round(temp.get('Barren land', 0) or 0,0)
+	context_dict['built_up_pop_risk']=round(temp.get('Build Up', 0) or 0,0)
+	context_dict['fruit_trees_pop_risk']=round(temp.get('Fruit Trees', 0) or 0,0)
+	context_dict['irrigated_agricultural_land_pop_risk']=round(temp.get('Irrigated Agricultural Land', 0) or 0,0)
+	context_dict['permanent_snow_pop_risk']=round(temp.get('Snow', 0) or 0,0)
+	context_dict['rainfed_agricultural_land_pop_risk']=round(temp.get('Rainfed', 0) or 0,0)
+	context_dict['rangeland_pop_risk']=round(temp.get('Rangeland', 0) or 0,0)
+	context_dict['sandcover_pop_risk']=round(temp.get('Sand Covered Areas', 0) or 0,0)
+	context_dict['vineyards_pop_risk']=round(temp.get('Vineyards', 0) or 0,0)
+	context_dict['forest_pop_risk']=round(temp.get('Forest & Shrub', 0) or 0,0)
+	context_dict['sand_dunes_pop_risk']=round(temp.get('Sand Dunes', 0) or 0,0)
+	temp = dict([(c['agg_simplified_description'], c['area']) for c in floodRiskLC])
+	context_dict['water_body_area_risk']=round(temp.get('Water body and Marshland', 0)/1000000,1)
+	context_dict['barren_land_area_risk']=round(temp.get('Barren land', 0)/1000000,1)
+	context_dict['built_up_area_risk']=round(temp.get('Build Up', 0)/1000000,1)
+	context_dict['fruit_trees_area_risk']=round(temp.get('Fruit Trees', 0)/1000000,1)
+	context_dict['irrigated_agricultural_land_area_risk']=round(temp.get('Irrigated Agricultural Land', 0)/1000000,1)
+	context_dict['permanent_snow_area_risk']=round(temp.get('Snow', 0)/1000000,1)
+	context_dict['rainfed_agricultural_land_area_risk']=round(temp.get('Rainfed', 0)/1000000,1)
+	context_dict['rangeland_area_risk']=round(temp.get('Rangeland', 0)/1000000,1)
+	context_dict['sandcover_area_risk']=round(temp.get('Sand Covered Areas', 0)/1000000,1)
+	context_dict['vineyards_area_risk']=round(temp.get('Vineyards', 0)/1000000,1)
+	context_dict['forest_area_risk']=round(temp.get('Forest & Shrub', 0)/1000000,1)
+	context_dict['sand_dunes_area_risk']=round(temp.get('Sand Dunes', 0),0)
+
+	data = []
+	data.append(['floodtype',_('Very Low'), _('Low'), _('Moderate'), _('High'), _('Very High'), _('Extreme'), _('Population at flood risk'), _('Population')])
+	data.append(['',0,0,0,0,0,0,context_dict['total_risk_population'], round(context_dict['vuid_population'] or 0, 0)])
+	data.append([_('River Flood'),context_dict['riverflood_forecast_verylow_pop'], context_dict['riverflood_forecast_low_pop'], context_dict['riverflood_forecast_med_pop'], context_dict['riverflood_forecast_high_pop'], context_dict['riverflood_forecast_veryhigh_pop'], context_dict['riverflood_forecast_extreme_pop'], context_dict['total_risk_population'], round(context_dict['vuid_population'] or 0, 0)])
+	data.append([_('Flash Flood'),context_dict['flashflood_forecast_verylow_pop'], context_dict['flashflood_forecast_low_pop'], context_dict['flashflood_forecast_med_pop'], context_dict['flashflood_forecast_high_pop'], context_dict['flashflood_forecast_veryhigh_pop'], context_dict['flashflood_forecast_extreme_pop'], context_dict['total_risk_population'], round(context_dict['vuid_population'] or 0, 0)])
+	data.append(['',0,0,0,0,0,0,context_dict['total_risk_population'], round(context_dict['vuid_population'] or 0, 0)])
+	context_dict['combo_pop_chart'] = gchart.ComboChart(SimpleDataSource(data=data), html_id="combo_chart", options={'vAxis': {'title': _('Number of population')},'legend': {'position': 'top', 'maxLines':2}, 'colors': ['#b9c246', '#e49307', '#e49307', '#e7711b', '#e2431e', '#d3362d', 'red', 'green' ], 'title': _("Flood Prediction Exposure"), 'seriesType': 'bars', 'series': {6: {'type': 'area', 'lineDashStyle': [2, 2, 20, 2, 20, 2]}, 7: {'type': 'area', 'lineDashStyle':[10, 2]}}, 'isStacked': 'false'})
+
+	dataFLRiskPop = []
+	dataFLRiskPop.append([_('Flood Risk'),'Population'])
+	dataFLRiskPop.append([_('Low'),context_dict['low_risk_population']])
+	dataFLRiskPop.append([_('Moderate'),context_dict['med_risk_population']])
+	dataFLRiskPop.append([_('High'),context_dict['high_risk_population']])
+	context_dict['floodrisk_pop_chart'] = gchart.PieChart(SimpleDataSource(data=dataFLRiskPop), html_id="pie_chart1", options={'slices': {0:{'color': 'blue'},1:{'color': 'orange'},2:{'color': 'red'}}, 'title': _("Flood Risk Population Exposure"), 'width': 225,'height': 225, 'pieSliceText': _('percentage'),'legend': {'position': 'top', 'maxLines':3}})
+
+	dataFLRiskPop = []
+	dataFLRiskPop.append([_('Lancover Type'),'Population'])
+	dataFLRiskPop.append([_('water body'),context_dict['water_body_pop_risk']])
+	dataFLRiskPop.append([_('barren land'),context_dict['barren_land_pop_risk']])
+	dataFLRiskPop.append([_('built up'),context_dict['built_up_pop_risk']])
+	dataFLRiskPop.append([_('fruit trees'),context_dict['fruit_trees_pop_risk']])
+	dataFLRiskPop.append([_('irrigated agricultural'),context_dict['irrigated_agricultural_land_pop_risk']])
+	dataFLRiskPop.append([_('permanent snow'),context_dict['permanent_snow_pop_risk']])
+	dataFLRiskPop.append([_('rainfeld agricultural'),context_dict['rainfed_agricultural_land_pop_risk']])
+	dataFLRiskPop.append([_('rangeland'),context_dict['rangeland_pop_risk']])
+	dataFLRiskPop.append([_('sandcover'),context_dict['sandcover_pop_risk']])
+	dataFLRiskPop.append([_('vineyards'),context_dict['vineyards_pop_risk']])
+	dataFLRiskPop.append([_('forest'),context_dict['forest_pop_risk']])
+	dataFLRiskPop.append([_('sand dunes'),context_dict['sand_dunes_pop_risk']])
+	context_dict['floodriskLC_pop_chart'] = gchart.PieChart(SimpleDataSource(data=dataFLRiskPop), html_id="pie_chart2", options={'title': _("Flood Risk Population Exposure by Landcover type"), 'width': 225,'height': 225, 'pieSliceText': _('percentage'),'legend': {'position': 'top', 'maxLines':3}})
+
+	dataFLRiskArea = []
+	dataFLRiskArea.append([_('Flood Risk'),'Area'])
+	dataFLRiskArea.append([_('Low'),context_dict['low_risk_area']])
+	dataFLRiskArea.append([_('Moderate'),context_dict['med_risk_area']])
+	dataFLRiskArea.append([_('High'),context_dict['high_risk_area']])
+	print 'dataFLRiskArea', dataFLRiskArea
+	context_dict['floodrisk_area_chart'] = gchart.PieChart(SimpleDataSource(data=dataFLRiskArea), html_id="pie_chart3", options={'slices': {0:{'color': 'blue'},1:{'color': 'orange'},2:{'color': 'red'}},'title': _("Flood Risk Area Exposure"), 'width': 225,'height': 225, 'pieSliceText': _('percentage'),'legend': {'position': 'top', 'maxLines':3}})
+
+	dataFLRiskPop = []
+	dataFLRiskPop.append([_('Lancover Type'),'Area'])
+	dataFLRiskPop.append([_('water body'),context_dict['water_body_area_risk']])
+	dataFLRiskPop.append([_('barren land'),context_dict['barren_land_area_risk']])
+	dataFLRiskPop.append([_('built up'),context_dict['built_up_area_risk']])
+	dataFLRiskPop.append([_('fruit trees'),context_dict['fruit_trees_area_risk']])
+	dataFLRiskPop.append([_('irrigated agricultural'),context_dict['irrigated_agricultural_land_area_risk']])
+	dataFLRiskPop.append([_('permanent snow'),context_dict['permanent_snow_area_risk']])
+	dataFLRiskPop.append([_('rainfeld agricultural'),context_dict['rainfed_agricultural_land_area_risk']])
+	dataFLRiskPop.append([_('rangeland'),context_dict['rangeland_area_risk']])
+	dataFLRiskPop.append([_('sandcover'),context_dict['sandcover_area_risk']])
+	dataFLRiskPop.append([_('vineyards'),context_dict['vineyards_area_risk']])
+	dataFLRiskPop.append([_('forest'),context_dict['forest_area_risk']])
+	dataFLRiskPop.append([_('sand dunes'),context_dict['sand_dunes_pop_risk']])
+	context_dict['floodriskLC_area_chart'] = gchart.PieChart(SimpleDataSource(data=dataFLRiskPop), html_id="pie_chart4", options={'title': _("Flood Risk Area Exposure by Landcover type"), 'width': 225,'height': 225, 'pieSliceText': _('percentage'),'legend': {'position': 'top', 'maxLines':3}})
+
+	context_dict.pop('position')
+	print context_dict
+	return context_dict
 
 def getGlofasChart(request):
 
@@ -2724,7 +2864,7 @@ class FloodForecastStatisticResource(ModelResource):
 		# d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
 		# yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
 
-		response = getFloodforecastStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=[boundaryFilter.get('date')])
+		response = getFloodforecastStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=[boundaryFilter.get('date')], bring=bring)
 		# response = getFloodForecast(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), rf_types=[boundaryFilter.get('rf_type')])
 		# response = getFloodriskStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), yy, mm, dd, boundaryFilter.get('rf_type'), bring)
 
@@ -2744,7 +2884,7 @@ class FloodStatisticResource(ModelResource):
 
 	class Meta:
 		# authorization = DjangoAuthorization()
-		resource_name = 'statistic_flood'
+		resource_name = 'statistic_floods'
 		allowed_methods = ['post']
 		detail_allowed_methods = ['post']
 		cache = SimpleCache()
@@ -2762,14 +2902,15 @@ class FloodStatisticResource(ModelResource):
 
 		boundaryFilter = json.loads(request.body)
 
-		wkts = ['ST_GeomFromText(\'%s\',4326)'%(i) for i in boundaryFilter['spatialfilter']]
-		bring = wkts[-1] if len(wkts) else None
+		wkts = ['ST_GeomFromText(\'%s\',4326)'%(i) for i in boundaryFilter.get('spatialfilter')]
+		wkt = list_ext(boundaryFilter.get('spatialfilter',[])).get(-1)
+		# bring = wkts[-1] if len(wkts) else None
 		filterLock = 'ST_Union(ARRAY[%s])'%(','.join(wkts))
 
 		# d = datetime.datetime.strptime('2018-09-11','%Y-%m-%d')
 		# yy, mm, dd = [d.year, d.month, d.day] if (datetime.datetime.today() - d).days > 0 else [None, None, None]
 
-		response = getFloodStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=boundaryFilter.get('date'), rf_types=[boundaryFilter.get('rf_types')])
+		response = getFloodStatistic(request, filterLock, boundaryFilter.get('flag'), boundaryFilter.get('code'), date=boundaryFilter.get('date'), rf_types=[boundaryFilter.get('rf_types')], wkt=wkt)
 
 		return response
 
@@ -2778,33 +2919,44 @@ class FloodStatisticResource(ModelResource):
 		response = self.getRisk(request)
 		return self.create_response(request, response)  
 
-def dashboard_floodrisk(request, filterLock, flag, code, includes=['getCommonUse','baseline','pop_lc','area_lc','building_lc','adm_lc','adm_hlt_road','GeoJson'], excludes=[]):
+def dashboard_floodrisk(request, filterLock, flag, code, includes=[], excludes=[], response=dict_ext()):
 
-	response = dict_ext()
+	# response = dict_ext()
 
 	if include_section('getCommonUse', includes, excludes):
 		response.update(getCommonUse(request, flag, code))
 
-	response['source'] = getFloodRisk(request, filterLock, flag, code, includes, excludes)
-	response['panels'] = panels = dict_ext()
+	# if ('baseline' in response.pathget('group')) and ('floodrisk' in response.pathget('group')):
+	# 	response.path('source').update(response.pathget('group').within('baseline','floodrisk'))
+	# else:
+	# 	response.path('source').update(getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[], response=response))
+	response['source'] = getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[], response=response.within('cache'))
+	panels = response.path('panels')
 	baseline = response['source']['baseline']
 	floodrisk = response['source']['floodrisk']
 
+	PANEL_TITLES = {
+		'pop_depth':_('Flood Risk Population'),
+		'area_depth':_('Flood Risk Area'),
+		'building_depth':_('Flood Risk Building'),
+		'adm_lcgroup_pop_area':_('Overview of Population and Area'),
+	}
 	for p in ['pop','building','area']:
-		panels.path(p+'_depth')['value'] = [floodrisk[p+'_depth'].get(d) or 0 for d in DEPTH_INDEX.values()]
-		panels.path(p+'_depth')['total_atrisk'] = total_atrisk = sum(panels.path(p+'_depth')['value'])
-		panels.path(p+'_depth')['total'] = total = baseline[p+'_total']
-		panels.path(p+'_depth')['value'].append(total-total_atrisk) # value not at risk
-		panels.path(p+'_depth')['title'] = [DEPTH_TYPES_SIMPLE[d] for d in DEPTH_INDEX.values()] + ['Not at risk']
-		panels.path(p+'_depth')['percent'] = [floodrisk[p+'_depth_percent'].get(d) or 0 for d in DEPTH_INDEX.values()]
-		panels.path(p+'_depth')['percent'].append(100-sum(panels.path(p+'_depth')['percent'])) # percent not at risk
-		panels.path(p+'_depth')['child'] = [[DEPTH_TYPES_SIMPLE[d], floodrisk[p+'_depth'].get(d)] for d in DEPTH_INDEX.values()]
-		panels.path(p+'_depth')['child'].append(['Not at risk',total-total_atrisk]) # percent not at risk
+		panels.path('charts',p+'_depth')['title'] = PANEL_TITLES[p+'_depth']
+		panels.path('charts',p+'_depth')['values'] = [floodrisk[p+'_depth'].get(d) or 0 for d in DEPTH_INDEX.values()]
+		panels.path('charts',p+'_depth')['total_atrisk'] = total_atrisk = sum(panels.path('charts',p+'_depth')['values'])
+		panels.path('charts',p+'_depth')['total'] = total = baseline[p+'_total']
+		panels.path('charts',p+'_depth')['values'].append(total-total_atrisk) # values not at risk
+		panels.path('charts',p+'_depth')['labels'] = [DEPTH_TYPES_SIMPLE[d] for d in DEPTH_INDEX.values()] + ['Not at risk']
+		panels.path('charts',p+'_depth')['percent'] = [floodrisk[p+'_depth_percent'].get(d) or 0 for d in DEPTH_INDEX.values()]
+		panels.path('charts',p+'_depth')['percent'].append(100-sum(panels.path('charts',p+'_depth')['percent'])) # percent not at risk
+		panels.path('charts',p+'_depth')['child'] = [[DEPTH_TYPES_SIMPLE[d], floodrisk[p+'_depth'].get(d)] for d in DEPTH_INDEX.values()]
+		panels.path('charts',p+'_depth')['child'].append(['Not at risk',total-total_atrisk]) # percent not at risk
 
 	if include_section('adm_lc', includes, excludes):
 		response['adm_lc'] = baseline['adm_lc']
-		panels['adm_lcgroup_pop_area'] = {
-			# 'title':_('Overview of Population and Area'),
+		panels.path('tables')['adm_lcgroup_pop_area'] = {
+			'title':_('Overview of Population and Area'),
 			'parentdata':[
 				response['parent_label'],
 				baseline['building_total'],
@@ -2841,10 +2993,10 @@ def dashboard_floodrisk(request, filterLock, flag, code, includes=['getCommonUse
 
 	return response
 
-def dashboard_floodforecast(request, filterLock, flag, code, includes=[], excludes=[], date='', rf_types=None):
+def dashboard_floodforecast(request, filterLock, flag, code, includes=[], excludes=[], date='', rf_types=None, response=dict_ext(), wkt=None):
 
 	date = date or request.GET.get('date')
-	response = dict_ext(getFloodForecast(request, filterLock, flag, code, rf_types=rf_types, date=date))
+	response = response.pathget('cache','getFloodForecast') or dict_ext(getFloodForecast(request, filterLock, flag, code, rf_types=rf_types, date=date, wkt=wkt))
 	panels = response.path('panels')
 
 	if include_section('getCommonUse', includes, excludes):
@@ -2856,83 +3008,85 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED = LIKELIHOOD_INDEX.values()[::-1]
 	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED.remove('verylow')
 	
-	panels.path('tables')['flashflood_likelihood'] = {
-		'title': _('Flash Flood Likelihood'),
-		'child': [{
-			'title': LIKELIHOOD_TYPES[v],
-			'pop': response['pop_flashflood_likelihood'][v],
-			'building': response['building_flashflood_likelihood'][v],
-			'depth_child': [{
-				'title': DEPTH_TYPES_SIMPLE[d],
-				'pop': response['pop_flashflood_likelihood_depth'][v][d],
-				'building': response['building_flashflood_likelihood_depth'][v][d],
-			} for d in DEPTH_INDEX.values()[::-1]],
-		} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
-	}
-
-	panels.path('charts')['flashflood_likelihood'] = {
-		'title': _('Flash Flood Likelihood'),
-		'labels': [LIKELIHOOD_TYPES[k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
-		'child': [{
-			'name': DEPTH_TYPES_SIMPLE[d],
-			'data': [response['pop_flashflood_likelihood_depth'][l][d] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
-		} for d in DEPTH_INDEX.values()],
-	}
-
-	for k,j in response['bysource'].items():
-
-		panels.path('riverflood',k)['key'] = k
-		panels.path('riverflood',k)['title'] = FLOODFORECAST_SOURCE_TYPES[k]
-
-		panels.path('riverflood',k,'tables')['riverflood_likelihood'] = {
-			'title': _('River Flood Likelihood'),
+	if include_section('flashflood', includes, excludes):
+		panels.path('tables')['flashflood_likelihood'] = {
+			'title': _('Flash Flood Likelihood'),
 			'child': [{
 				'title': LIKELIHOOD_TYPES[v],
-				'pop': j['pop_riverflood_likelihood_subtotal'][v],
-				'building': j['building_riverflood_likelihood_subtotal'][v],
+				'pop': response['pop_flashflood_likelihood'][v],
+				'building': response['building_flashflood_likelihood'][v],
 				'depth_child': [{
 					'title': DEPTH_TYPES_SIMPLE[d],
-					'pop': j['pop_riverflood_likelihood_depth'][v][d],
-					'building': j['building_riverflood_likelihood_depth'][v][d],
+					'pop': response['pop_flashflood_likelihood_depth'][v][d],
+					'building': response['building_flashflood_likelihood_depth'][v][d],
 				} for d in DEPTH_INDEX.values()[::-1]],
 			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
 		}
 
-		panels.path('riverflood',k,'charts')['riverflood_likelihood'] = {
+		panels.path('charts')['flashflood_likelihood'] = {
 			'title': _('Flash Flood Likelihood'),
-			'labels': [LIKELIHOOD_TYPES[l] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
+			'labels': [LIKELIHOOD_TYPES[k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
 			'child': [{
 				'name': DEPTH_TYPES_SIMPLE[d],
-				'data': [j['pop_riverflood_likelihood_depth'][l][d] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
+				'data': [response['pop_flashflood_likelihood_depth'][l][d] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
 			} for d in DEPTH_INDEX.values()],
-			# 'child': [{
-			# 	'title': LIKELIHOOD_TYPES[v],
-			# 	'pop': j['pop_riverflood_likelihood_subtotal'][v],
-			# 	'depth_child': [{
-			# 		'title': DEPTH_TYPES_SIMPLE[d],
-			# 		'pop': j['pop_riverflood_likelihood_depth'][v][d],
-			# 	} for d in DEPTH_INDEX.values()],
-			# } for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
 		}
 
-		panels.path('riverflood',k,'tables')['flood_likelihood_overview'] = {
-			'title': _('Flood Likelihood Overview'),
-			'child': [{
-				'code': v['code'],
-				'value': [
-					v['na_en'],
-					v['flashflood_forecast_extreme_pop'],
-					v['flashflood_forecast_veryhigh_pop'],
-					v['flashflood_forecast_high_pop'],
-					v['flashflood_forecast_med_pop'],
-					v['flashflood_forecast_low_pop'],
-					v['riverflood_forecast_extreme_pop'],
-					v['riverflood_forecast_veryhigh_pop'],
-					v['riverflood_forecast_high_pop'],
-					v['riverflood_forecast_med_pop'],
-					v['riverflood_forecast_low_pop'],
-			]} for v in response.pathget('child_bysource',k)]
-		}
+	if include_section('riverflood', includes, excludes):
+		for k,j in response['bysource'].items():
+
+			panels.path('riverflood',k)['key'] = k
+			panels.path('riverflood',k)['title'] = FLOODFORECAST_SOURCE_TYPES[k]
+
+			panels.path('riverflood',k,'tables')['riverflood_likelihood'] = {
+				'title': _('River Flood Likelihood'),
+				'child': [{
+					'title': LIKELIHOOD_TYPES[v],
+					'pop': j['pop_riverflood_likelihood_subtotal'][v],
+					'building': j['building_riverflood_likelihood_subtotal'][v],
+					'depth_child': [{
+						'title': DEPTH_TYPES_SIMPLE[d],
+						'pop': j['pop_riverflood_likelihood_depth'][v][d],
+						'building': j['building_riverflood_likelihood_depth'][v][d],
+					} for d in DEPTH_INDEX.values()[::-1]],
+				} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
+			}
+
+			panels.path('riverflood',k,'charts')['riverflood_likelihood'] = {
+				'title': _('Flash Flood Likelihood'),
+				'labels': [LIKELIHOOD_TYPES[l] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
+				'child': [{
+					'name': DEPTH_TYPES_SIMPLE[d],
+					'data': [j['pop_riverflood_likelihood_depth'][l][d] for l in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
+				} for d in DEPTH_INDEX.values()],
+				# 'child': [{
+				# 	'title': LIKELIHOOD_TYPES[v],
+				# 	'pop': j['pop_riverflood_likelihood_subtotal'][v],
+				# 	'depth_child': [{
+				# 		'title': DEPTH_TYPES_SIMPLE[d],
+				# 		'pop': j['pop_riverflood_likelihood_depth'][v][d],
+				# 	} for d in DEPTH_INDEX.values()],
+				# } for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
+			}
+
+			panels.path('riverflood',k,'tables')['flood_likelihood_overview'] = {
+				'title': _('Flood Likelihood Overview'),
+				'child': [{
+					'code': v['code'],
+					'value': [
+						v['na_en'],
+						v['flashflood_forecast_extreme_pop'],
+						v['flashflood_forecast_veryhigh_pop'],
+						v['flashflood_forecast_high_pop'],
+						v['flashflood_forecast_med_pop'],
+						v['flashflood_forecast_low_pop'],
+						v['riverflood_forecast_extreme_pop'],
+						v['riverflood_forecast_veryhigh_pop'],
+						v['riverflood_forecast_high_pop'],
+						v['riverflood_forecast_med_pop'],
+						v['riverflood_forecast_low_pop'],
+				]} for v in response.pathget('child_bysource',k)]
+			}
 
 	if include_section('GeoJson', includes, excludes):
 		response['GeoJson'] = geojsonadd_floodforecast(response)
@@ -2944,6 +3098,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 	kwargs:
 		formatted (BOOLEAN): if true return response in multi dictionary format
 		init_response (DICT): initial response value
+		wkt(WKT): single last wkt from filterLock array
 	'''
 	# DAY = int(DAY)-1
 	if sourceType == None:
@@ -3176,7 +3331,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 		coalesce(round(sum(verylow_high_buildings)),0) as riverflood_forecast_verylow_risk_high_buildings, \
 		coalesce(round(sum(verylow_med_buildings)),0) as riverflood_forecast_verylow_risk_med_buildings, \
 		coalesce(round(sum(verylow_low_buildings)),0) as riverflood_forecast_verylow_risk_low_buildings \
-		from get_glofas(date('%s-%s-%s')-1,'%s',%s,'%s')" %(YEAR,MONTH,DAY,flag,code,filterLock)
+		from get_glofas(date('%s-%s-%s')-1,'%s',%s,'%s')" %(YEAR,MONTH,DAY,flag,code,kwargs.get('wkt', ''))
 		row = query_to_dicts(cursor, sql)
 		for item in row:
 			# response = item
@@ -3245,7 +3400,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 		coalesce(round(sum(verylow_high_buildings)),0) as riverflood_forecast_verylow_risk_high_buildings, \
 		coalesce(round(sum(verylow_med_buildings)),0) as riverflood_forecast_verylow_risk_med_buildings, \
 		coalesce(round(sum(verylow_low_buildings)),0) as riverflood_forecast_verylow_risk_low_buildings \
-		from get_merge_glofas_gfms(date('%s-%s-%s'),'%s',%s,'%s')" %(YEAR,MONTH,DAY,flag,code,filterLock)
+		from get_merge_glofas_gfms(date('%s-%s-%s'),'%s',%s,'%s')" %(YEAR,MONTH,DAY,flag,code,kwargs.get('wkt', ''))
 		print sql
 		row = query_to_dicts(cursor, sql)
 		for item in row:
@@ -3384,44 +3539,155 @@ def geojsonadd_floodforecast(response):
 
 def getFloodriskStatistic(request,filterLock, flag, code):
 
-	response_dashboard = dashboard_floodrisk(request, filterLock, flag, code)
 	response = dict_ext()
-	response['source'] = response_dashboard['source']
+	response.pathget('context','getBaseline')['includes'] = {
+		'excludes':['GeoJson'],
+	}
+	response_dashboard = dashboard_floodrisk(request, filterLock, flag, code, response=response)
+	panels_list = dict_ext()
+	charts = panels_list['charts'] = []
+	# response['source'] = response_dashboard['source']
 
-	PANEL_TITLES = {'pop_depth':'Population Graph','area_depth':'Area Graph','building_depth':'Building Graph','adm_lcgroup_pop_area':'Overview of Population and Area'}
-	chart_order = ['pop_depth','building_depth','area_depth']
-	response.path('panels_list')['charts'] = []
-	for k in chart_order:
-		p = {}
-		p['child'] = [{'value':response_dashboard['panels'][k]['value'][i], 'percent':response_dashboard['panels'][k]['percent'][i], 'title':t} for i,t in enumerate(response_dashboard['panels'][k]['title'])]
-		p['title'] = PANEL_TITLES.get(k)
-		p['total'] = response_dashboard['panels'][k]['total']
-		p['total_atrisk'] = response_dashboard['panels'][k]['total_atrisk']
-		response['panels_list']['charts'].append(p)
-	response.path('panels_list')['tables'] = [{
-		'title':PANEL_TITLES.get(k),
-		'child':[response_dashboard['panels'][k]['parentdata']]+[j['value'] for j in response_dashboard['panels'][k]['child']]
-	} for k in ['adm_lcgroup_pop_area']]
+	# PANEL_TITLES = {'pop_depth':'Population Graph','area_depth':'Area Graph','building_depth':'Building Graph','adm_lcgroup_pop_area':'Overview of Population and Area'}
+	# chart_order = ['pop_depth','building_depth','area_depth']
+	# response.path('panels_list')['charts'] = []
+	# for k in chart_order:
+	# 	p = {}
+	# 	p['key'] = k
+	# 	p['child'] = [{'value':response_dashboard['panels'][k]['value'][i], 'percent':response_dashboard['panels'][k]['percent'][i], 'title':t} for i,t in enumerate(response_dashboard['panels'][k]['title'])]
+	# 	p['title'] = PANEL_TITLES.get(k)
+	# 	p['total'] = response_dashboard['panels'][k]['total']
+	# 	p['total_atrisk'] = response_dashboard['panels'][k]['total_atrisk']
+	# 	response['panels_list']['charts'].append(p)
+	# panels_list['charts'] = dict_ext(response_dashboard['panels']).valueslistbykey(['pop_depth','building_depth','area_depth'],addkeyasattr=True)
+	for key, item in response_dashboard.pathget('panels','charts').items():
+		charts.append(dict_ext(item).within('key','child','title','total','total_atrisk'))
+	panels_list['tables'] = [{
+		'key':k,
+		'title':v['title'],
+		'child':[v['parentdata']]+[j['value'] for j in v['child']]
+	} for k,v in response_dashboard['panels']['tables'].items()]
 
-	return response
+	return {'panels_list':panels_list}
 
-def getFloodforecastStatistic(request,filterLock, flag, code, date=None, rf_types=[], bring=None):
+def getFloodforecastStatistic(request,filterLock, flag, code, date=None, rf_types=[], wkt=None):
 
-	panels = dashboard_floodforecast(request, filterLock, flag, code, date=date, rf_types=rf_types)['panels']
-	panels['charts'] = panels['charts'].valueslistbykey('flashflood_likelihood')
-	panels['tables'] = panels['tables'].valueslistbykey('flashflood_likelihood')
-	panels['riverflood'] = panels['riverflood'].valueslistbykey(*FLOODFORECAST_SOURCE_ORDER)
+	panels = dashboard_floodforecast(request, filterLock, flag, code, date=date, rf_types=rf_types, wkt=wkt)['panels']
+	panels['charts'] = panels['charts'].valueslistbykey(['flashflood_likelihood'],addkeyasattr=True)
+	panels['tables'] = panels['tables'].valueslistbykey(['flashflood_likelihood'],addkeyasattr=True)
+	panels['riverflood'] = panels['riverflood'].valueslistbykey(FLOODFORECAST_SOURCE_ORDER,addkeyasattr=True)
 	for v in panels.pathget('riverflood'):
-		v['tables'] = v['tables'].valueslistbykey('riverflood_likelihood','flood_likelihood_overview')
-		v['charts'] = v['charts'].valueslistbykey('riverflood_likelihood')
+		v['tables'] = v['tables'].valueslistbykey(['riverflood_likelihood','flood_likelihood_overview'],addkeyasattr=True)
+		v['charts'] = v['charts'].valueslistbykey(['riverflood_likelihood'],addkeyasattr=True)
 
-	return panels
+	return {'panels_list':panels}
 
-def getFloodStatistic(request,filterLock, flag, code, date=None, rf_types=[]):
+def getFloodStatistic(request,filterLock, flag, code, date=None, rf_types=[], wkt=None):
 
 	response = {
-		'floodrisk': getFloodriskStatistic(request,filterLock, flag, code),
-		'floodforecast': getFloodforecastStatistic(request,filterLock, flag, code, date=date, rf_types=rf_types),
+		'panels_list':{
+			'floodrisk': getFloodriskStatistic(request,filterLock, flag, code)['panels_list'],
+			'floodforecast': getFloodforecastStatistic(request,filterLock, flag, code, date=date, rf_types=rf_types, wkt=wkt)['panels_list'],
+		}
 	}
 
 	return response
+
+class FLoodInfoVillages(Resource):
+
+	class Meta:
+		resource_name = 'flood'
+		authentication = SessionAuthentication()
+
+	def prepend_urls(self):
+		name = self._meta.resource_name
+		return [
+			url(r"^%s%s$" % (name, trailing_slash()), self.wrap_view('getdata'), name='get_%s'%(name)),
+		]
+
+	def getdata(self, request, **kwargs):
+		self.method_check(request, allowed=['get'])
+		self.is_authenticated(request)
+		self.throttle_check(request)
+
+		data = getFloodInfoVillagesCommon(request.GET.get('vuid'))
+		response = {
+			'panels_list':{
+				'tables':[
+					{
+						'key':'base_info',
+						'child':[
+							[_('Settlement'),data.get('name_en')],
+							[_('District'),data.get('dist_na_en')],
+							[_('Province'),data.get('prov_na_en')],
+							[_('Area'),data.get('area_sqm')],
+							[_('Total Population'),data.get('area_population')],
+						],
+					},
+				],
+				'charts':[
+					{
+						'key':'flood_prediction_exposure',
+						'title':_('Flood Prediction Exposure'),
+						'labels':[_('River Flood'),_('Flash Flood'),],
+						'y_axis_desc':_('Number of Population'),
+						'child':[{
+							'name':LIKELIHOOD_TYPES[l],
+							'data':[
+								data.get('riverflood_forecast_%s_pop'%(l) or 0),
+								data.get('flashflood_forecast_%s_pop'%(l) or 0),
+							]
+						} for l in LIKELIHOOD_INDEX.values()]+
+						[{
+							'name':_('Population at flood risk'),
+							'data':[data.get('total_risk_population') or 0,]*2,
+						},{
+							'name':_('Population'),
+							'data':[data.get('vuid_population') or 0,]*2,
+						},],
+					},
+					{
+						'key':'flood_risk_population_exposure',
+						'title':_('Flood Risk Population Exposure'),
+						'child':[[DEPTH_TYPES_SIMPLE[d],data.get(d+'_risk_population')] for kd, d in DEPTH_INDEX.items()],
+					},
+					{
+						'key':'flood_risk_area_exposure',
+						'title':_('Flood Risk Area Exposure'),
+						'child':[[DEPTH_TYPES_SIMPLE[d],data.get(d+'_risk_area')] for kd, d in DEPTH_INDEX.items()],
+					},
+					{
+						'key':'flood_risk_population_exposure_by_landcover_type',
+						'title':_('Flood Risk Population Exposure by Landcover Type'),
+						'child':[[LANDCOVER_TYPES[PROVINCESUMMARY_LANDCOVER_TYPES[lc]],data.get(lc+'_pop_risk')] for lc in PROVINCESUMMARY_LANDCOVER_TYPES_ORDER],
+					},
+					{
+						'key':'flood_risk_area_exposure_by_landcover_type',
+						'title':_('Flood Risk Area Exposure by Landcover Type'),
+						'child':[[LANDCOVER_TYPES[PROVINCESUMMARY_LANDCOVER_TYPES[lc]],data.get(lc+'_area_risk')] for lc in PROVINCESUMMARY_LANDCOVER_TYPES_ORDER],
+					},
+				]
+			},
+		}
+
+		return self.create_response(request, response)
+
+def getQuickOverview(request, filterLock, flag, code, response=dict_ext()):
+	
+	response.path('cache')['getFloodRisk'] = response.pathget('cache','getFloodRisk') or getFloodRisk(request, filterLock, flag, code, includes=[None], response=dict_ext(response))
+	dashboard_floodrisk_response = dashboard_floodrisk(request, filterLock, flag, code, includes=[''], response=response)
+	
+	response.path('cache')['getFloodForecast'] = response.pathget('cache','getFloodForecast') or getFloodForecast(request, filterLock, flag, code, includes=['riverflood','riverflood_detail'], response=dict_ext(response))
+	dashboard_floodforecast_response = dashboard_floodforecast(request, filterLock, flag, code, includes=['riverflood'], response=response)
+	
+	return {
+		'templates':{
+			'panels':'dash_qoview_flood.html',
+		},
+		'data':{
+			'panels':{
+				'floodrisk':dict_ext(dashboard_floodrisk_response).pathget('panels'),
+				'floodforecast':dict_ext(dashboard_floodforecast_response).pathget('panels'),
+			}
+		},
+	}

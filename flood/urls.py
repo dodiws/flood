@@ -1,12 +1,21 @@
 from django.conf.urls import include, patterns, url
 from tastypie.api import Api
-from .views import FloodRiskStatisticResource, FloodForecastStatisticResource, FloodStatisticResource
+from .views import (
+    FloodRiskStatisticResource,
+    FloodForecastStatisticResource,
+    FloodStatisticResource,
+    FLoodInfoVillages 
+)
 
 api = Api(api_name='geoapi')
 
 api.register(FloodRiskStatisticResource())
 api.register(FloodForecastStatisticResource())
 api.register(FloodStatisticResource())
+
+GETOVERVIEWMAPS_APIOBJ = [
+    FLoodInfoVillages(),
+]
 
 urlpatterns = [
     url(r'', include(api.urls)),

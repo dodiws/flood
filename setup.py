@@ -1,15 +1,19 @@
 import os
 from setuptools import find_packages, setup
 
-with open(os.path.join(os.path.dirname(__file__), 'README.rst')) as readme:
-    README = readme.read()
+def readfile(fname):
+    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
+        return f.read()
+
+README = readfile('README.rst')
+VERSION = readfile('VERSION')
 
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='isdc-flood',
-    version='0.1dev2',
+    version=VERSION,
     packages=find_packages(),
     include_package_data=True,
     license='BSD License',  # temporary license

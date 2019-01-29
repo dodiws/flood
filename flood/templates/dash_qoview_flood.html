@@ -1,0 +1,6 @@
+<div class="col s12 m12 xl12"></div>
+{% with charts=data.panels.floodrisk.charts color="colorAccess" colorpoint="true" %}
+{% include "dash_chart_donut.html" with title=charts.pop_depth.title icon="icon-people_affected_population" key="pop_depth" values=charts.pop_depth.child total_atrisk=charts.area_depth.total_atrisk total=charts.area_depth.total %}
+{% include "dash_chart_donut.html" with title=charts.area_depth.title icon="fa fa-tree" key="area_depth" values=charts.area_depth.child total_atrisk=charts.area_depth.total_atrisk total=charts.area_depth.total %}
+{% endwith %}
+{% include "dash_qoview_flood_forecast.html" with panels=data.panels.floodforecast %}
