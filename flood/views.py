@@ -3401,7 +3401,7 @@ def getFloodForecastBySource(sourceType, targetRisk, filterLock, flag, code, YEA
 		coalesce(round(sum(verylow_med_buildings)),0) as riverflood_forecast_verylow_risk_med_buildings, \
 		coalesce(round(sum(verylow_low_buildings)),0) as riverflood_forecast_verylow_risk_low_buildings \
 		from get_merge_glofas_gfms(date('%s-%s-%s'),'%s',%s,'%s')" %(YEAR,MONTH,DAY,flag,code,kwargs.get('wkt', ''))
-		print sql
+		# print sql
 		row = query_to_dicts(cursor, sql)
 		for item in row:
 			# response = item
