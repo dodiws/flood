@@ -2932,8 +2932,8 @@ def dashboard_floodrisk(request, filterLock, flag, code, includes=[], excludes=[
 	# 	response.path('source').update(getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[], response=response))
 	response['source'] = getFloodRisk(request, filterLock, flag, code, includes=[], excludes=[], response=response.within('cache'))
 	panels = response.path('panels')
-	baseline = response['source']['baseline']
-	floodrisk = response['source']['floodrisk']
+	baseline = response.path('source','baseline')
+	floodrisk = response.path('source','floodrisk')
 
 	PANEL_TITLES = {
 		'pop_depth':_('Flood Risk Population'),
@@ -2941,19 +2941,22 @@ def dashboard_floodrisk(request, filterLock, flag, code, includes=[], excludes=[
 		'building_depth':_('Flood Risk Building'),
 		'adm_lcgroup_pop_area':_('Overview of Population and Area'),
 	}
-	for p in ['pop','building','area']:
-		panels.path('charts',p+'_depth')['title'] = PANEL_TITLES[p+'_depth']
-		panels.path('charts',p+'_depth')['values'] = [floodrisk[p+'_depth'].get(d) or 0 for d in DEPTH_INDEX.values()]
-		panels.path('charts',p+'_depth')['total_atrisk'] = total_atrisk = sum(panels.path('charts',p+'_depth')['values'])
-		panels.path('charts',p+'_depth')['total'] = total = baseline[p+'_total']
-		panels.path('charts',p+'_depth')['values'].append(total-total_atrisk) # values not at risk
-		panels.path('charts',p+'_depth')['labels'] = [DEPTH_TYPES_SIMPLE[d] for d in DEPTH_INDEX.values()] + ['Not at risk']
-		panels.path('charts',p+'_depth')['percent'] = [floodrisk[p+'_depth_percent'].get(d) or 0 for d in DEPTH_INDEX.values()]
-		panels.path('charts',p+'_depth')['percent'].append(100-sum(panels.path('charts',p+'_depth')['percent'])) # percent not at risk
-		panels.path('charts',p+'_depth')['child'] = [[DEPTH_TYPES_SIMPLE[d], floodrisk[p+'_depth'].get(d)] for d in DEPTH_INDEX.values()]
-		panels.path('charts',p+'_depth')['child'].append(['Not at risk',total-total_atrisk]) # percent not at risk
 
-	if include_section('adm_lc', includes, excludes):
+	if floodrisk.containall('pop_depth','area_depth','building_depth'):
+		for p in ['pop','building','area']:
+			panels.path('charts',p+'_depth')['title'] = PANEL_TITLES[p+'_depth']
+			panels.path('charts',p+'_depth')['values'] = [floodrisk[p+'_depth'].get(d) or 0 for d in DEPTH_INDEX.values()]
+			panels.path('charts',p+'_depth')['total_atrisk'] = total_atrisk = sum(panels.path('charts',p+'_depth')['values'])
+			panels.path('charts',p+'_depth')['total'] = total = baseline[p+'_total']
+			panels.path('charts',p+'_depth')['values'].append(total-total_atrisk) # values not at risk
+			panels.path('charts',p+'_depth')['labels'] = [DEPTH_TYPES_SIMPLE[d] for d in DEPTH_INDEX.values()] + ['Not at risk']
+			panels.path('charts',p+'_depth')['percent'] = [floodrisk[p+'_depth_percent'].get(d) or 0 for d in DEPTH_INDEX.values()]
+			panels.path('charts',p+'_depth')['percent'].append(100-sum(panels.path('charts',p+'_depth')['percent'])) # percent not at risk
+			panels.path('charts',p+'_depth')['child'] = [[DEPTH_TYPES_SIMPLE[d], floodrisk[p+'_depth'].get(d)] for d in DEPTH_INDEX.values()]
+			panels.path('charts',p+'_depth')['child'].append(['Not at risk',total-total_atrisk]) # percent not at risk
+
+	# if include_section('adm_lc', includes, excludes):
+	if baseline.containall('adm_lc'):
 		response['adm_lc'] = baseline['adm_lc']
 		panels.path('tables')['adm_lcgroup_pop_area'] = {
 			'title':_('Overview of Population and Area'),
@@ -3008,7 +3011,8 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED = LIKELIHOOD_INDEX.values()[::-1]
 	LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED.remove('verylow')
 	
-	if include_section('flashflood', includes, excludes):
+	# if include_section('flashflood', includes, excludes):
+	if response.containall('pop_flashflood_likelihood','building_flashflood_likelihood','pop_flashflood_likelihood_depth','building_flashflood_likelihood_depth'):
 		panels.path('tables')['flashflood_likelihood'] = {
 			'title': _('Flash Flood Likelihood'),
 			'child': [{
@@ -3023,6 +3027,7 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 			} for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED]
 		}
 
+	if response.containall('pop_flashflood_likelihood_depth'):
 		panels.path('charts')['flashflood_likelihood'] = {
 			'title': _('Flash Flood Likelihood'),
 			'labels': [LIKELIHOOD_TYPES[k] for k in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED],
@@ -3032,7 +3037,8 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 			} for d in DEPTH_INDEX.values()],
 		}
 
-	if include_section('riverflood', includes, excludes):
+	# if include_section('riverflood', includes, excludes):
+	if response.containall('bysource'):
 		for k,j in response['bysource'].items():
 
 			panels.path('riverflood',k)['key'] = k
@@ -3069,24 +3075,25 @@ def dashboard_floodforecast(request, filterLock, flag, code, includes=[], exclud
 				# } for v in LIKELIHOOD_INDEX_EXC_VERYLOW_REVERSED[::-1]]
 			}
 
-			panels.path('riverflood',k,'tables')['flood_likelihood_overview'] = {
-				'title': _('Flood Likelihood Overview'),
-				'child': [{
-					'code': v['code'],
-					'value': [
-						v['na_en'],
-						v['flashflood_forecast_extreme_pop'],
-						v['flashflood_forecast_veryhigh_pop'],
-						v['flashflood_forecast_high_pop'],
-						v['flashflood_forecast_med_pop'],
-						v['flashflood_forecast_low_pop'],
-						v['riverflood_forecast_extreme_pop'],
-						v['riverflood_forecast_veryhigh_pop'],
-						v['riverflood_forecast_high_pop'],
-						v['riverflood_forecast_med_pop'],
-						v['riverflood_forecast_low_pop'],
-				]} for v in response.pathget('child_bysource',k)]
-			}
+			if response.pathget('child_bysource',k):
+				panels.path('riverflood',k,'tables')['flood_likelihood_overview'] = {
+					'title': _('Flood Likelihood Overview'),
+					'child': [{
+						'code': v['code'],
+						'value': [
+							v['na_en'],
+							v['flashflood_forecast_extreme_pop'],
+							v['flashflood_forecast_veryhigh_pop'],
+							v['flashflood_forecast_high_pop'],
+							v['flashflood_forecast_med_pop'],
+							v['flashflood_forecast_low_pop'],
+							v['riverflood_forecast_extreme_pop'],
+							v['riverflood_forecast_veryhigh_pop'],
+							v['riverflood_forecast_high_pop'],
+							v['riverflood_forecast_med_pop'],
+							v['riverflood_forecast_low_pop'],
+					]} for v in response.pathget('child_bysource',k)]
+				}
 
 	if include_section('GeoJson', includes, excludes):
 		response['GeoJson'] = geojsonadd_floodforecast(response)
@@ -3677,8 +3684,8 @@ def getQuickOverview(request, filterLock, flag, code, response=dict_ext()):
 	response.path('cache')['getFloodRisk'] = response.pathget('cache','getFloodRisk') or getFloodRisk(request, filterLock, flag, code, includes=[None], response=dict_ext(response))
 	dashboard_floodrisk_response = dashboard_floodrisk(request, filterLock, flag, code, includes=[''], response=response)
 	
-	response.path('cache')['getFloodForecast'] = response.pathget('cache','getFloodForecast') or getFloodForecast(request, filterLock, flag, code, includes=['riverflood','riverflood_detail'], response=dict_ext(response))
-	dashboard_floodforecast_response = dashboard_floodforecast(request, filterLock, flag, code, includes=['riverflood'], response=response)
+	response.path('cache')['getFloodForecast'] = response.pathget('cache','getFloodForecast') or getFloodForecast(request, filterLock, flag, code, includes=['riverflood','flashflood'], response=dict_ext(response))
+	dashboard_floodforecast_response = dashboard_floodforecast(request, filterLock, flag, code, includes=[''], response=response)
 	
 	return {
 		'templates':{
