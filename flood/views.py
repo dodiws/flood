@@ -79,6 +79,7 @@ from django.template import RequestContext
 import json
 import time, datetime
 import timeago
+import copy 
 from geodb.enumerations import (
 	DEPTH_INDEX, 
 	DEPTH_TYPES_INVERSE, 
@@ -3682,10 +3683,10 @@ class FLoodInfoVillages(Resource):
 def getQuickOverview(request, filterLock, flag, code, response=dict_ext()):
 	
 	response.path('cache')['getFloodRisk'] = response.pathget('cache','getFloodRisk') or getFloodRisk(request, filterLock, flag, code, includes=[None], response=dict_ext(response))
-	dashboard_floodrisk_response = dashboard_floodrisk(request, filterLock, flag, code, includes=[''], response=response)
+	dashboard_floodrisk_response = dashboard_floodrisk(request, filterLock, flag, code, includes=[''], response=copy.copy(response))
 	
 	response.path('cache')['getFloodForecast'] = response.pathget('cache','getFloodForecast') or getFloodForecast(request, filterLock, flag, code, includes=['riverflood','flashflood'], response=dict_ext(response))
-	dashboard_floodforecast_response = dashboard_floodforecast(request, filterLock, flag, code, includes=[''], response=response)
+	dashboard_floodforecast_response = dashboard_floodforecast(request, filterLock, flag, code, includes=[''], response=copy.copy(response))
 	
 	return {
 		'templates':{
